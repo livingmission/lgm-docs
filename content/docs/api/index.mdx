@@ -1,0 +1,623 @@
+---
+title: API Reference
+description: REST API documentation for Living Mission
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# API Reference
+
+The Living Mission API provides RESTful endpoints for interacting with the network. The API is built with Go and provides real-time data from the blockchain.
+
+## Base URL
+
+```
+Production: https://api.fene.network
+Testnet:    https://api-testnet.fene.network
+```
+
+## Authentication
+
+Most read endpoints are public. Write operations require JWT authentication.
+
+### Authentication Flow
+
+```
+1. GET  /auth/nonce?address={address}     → Get nonce message
+2. POST /auth/verify                       → Submit signature, get JWT
+3. Use JWT in Authorization header         → Access protected endpoints
+```
+
+### Get Nonce
+
+```http
+GET /auth/nonce?address=0x...
+```
+
+**Response:**
+```json
+{
+  "message": "Sign this message to authenticate with Living Mission:\n\nNonce: abc123\nTimestamp: 2024-01-15T10:30:00Z",
+  "nonce": "abc123",
+  "expires_at": "2024-01-15T10:35:00Z"
+}
+```
+
+### Verify Signature
+
+```http
+POST /auth/verify
+Content-Type: application/json
+
+{
+  "address": "0x...",
+  "signature": "0x..."
+}
+```
+
+**Response:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "role": "validator",
+  "address": "0x...",
+  "expires_at": "2024-01-16T10:30:00Z"
+}
+```
+
+### Using JWT
+
+```http
+GET /protected/endpoint
+Authorization: Bearer eyJhbGciOiJIUzI1NiIs...
+```
+
+## Endpoints
+
+### Validators
+
+#### List All Validators
+
+```http
+GET /validators
+```
+
+**Response:**
+```json
+{
+  "validators": [
+    {
+      "address": "0x...",
+      "moniker": "Validator One",
+      "status": "VALIDATED",
+      "self_stake": "10000000000000000000000",
+      "total_stake": "150000000000000000000000",
+      "commission_rate": 500,
+      "delegator_count": 45,
+      "uptime": 99.9,
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "total": 50
+}
+```
+
+#### Get Active Validators
+
+```http
+GET /validators/active
+```
+
+Returns only validators with status `VALIDATED`.
+
+#### Get Validator Candidates
+
+```http
+GET /validators/candidates
+```
+
+Returns validators with status `STAKED` (awaiting activation).
+
+#### Get Validator Details
+
+```http
+GET /validators/{address}
+```
+
+**Response:**
+```json
+{
+  "address": "0x...",
+  "reward_address": "0x...",
+  "moniker": "Validator One",
+  "phone_number": "+1234567890",
+  "details": "Professional validator service",
+  "status": "VALIDATED",
+  "self_stake": "10000000000000000000000",
+  "total_stake": "150000000000000000000000",
+  "commission_rate": 500,
+  "claimable_reward": "500000000000000000000",
+  "delegator_count": 45,
+  "created_at": "2024-01-01T00:00:00Z",
+  "activated_at": "2024-01-01T00:03:20Z"
+}
+```
+
+#### Get Validator's Delegators
+
+```http
+GET /validators/{address}/delegators
+```
+
+**Response:**
+```json
+{
+  "delegators": [
+    {
+      "address": "0x...",
+      "stake_amount": "5000000000000000000000",
+      "pending_rewards": "100000000000000000000",
+      "joined_at": 12345,
+      "staker_index": 0
+    }
+  ],
+  "total": 45
+}
+```
+
+### Delegators
+
+#### Get Delegator Info
+
+```http
+GET /delegators/{address}
+```
+
+**Response:**
+```json
+{
+  "address": "0x...",
+  "total_staked": "10000000000000000000000",
+  "total_rewards": "500000000000000000000",
+  "validators": ["0x...", "0x..."]
+}
+```
+
+#### Get Delegator Stakes
+
+```http
+GET /delegators/{address}/stakes
+```
+
+**Response:**
+```json
+{
+  "stakes": [
+    {
+      "validator": "0x...",
+      "validator_moniker": "Validator One",
+      "stake_amount": "5000000000000000000000",
+      "pending_rewards": "100000000000000000000",
+      "status": "ACTIVE",
+      "joined_at": 12345,
+      "staker_index": 5
+    }
+  ]
+}
+```
+
+#### Get Delegator Rewards
+
+```http
+GET /delegators/{address}/rewards
+```
+
+**Response:**
+```json
+{
+  "rewards": [
+    {
+      "validator": "0x...",
+      "pending": "100000000000000000000",
+      "after_proximity": "13000000000000000000",
+      "after_tax": "11700000000000000000"
+    }
+  ],
+  "total_pending": "200000000000000000000",
+  "total_claimable": "23400000000000000000"
+}
+```
+
+### Referral System
+
+#### Get Referral Key Info
+
+```http
+GET /referral/keys/{keyHash}
+```
+
+**Response:**
+```json
+{
+  "key": "0x...",
+  "validator": "0x...",
+  "is_active": true,
+  "is_multi_use": false,
+  "usage_count": 0,
+  "max_usage": 1,
+  "created_at": 12345,
+  "expires_at": 0,
+  "is_expired": false,
+  "is_usable": true
+}
+```
+
+#### Get Validator's Keys
+
+```http
+GET /referral/validators/{address}/keys
+```
+
+**Response:**
+```json
+{
+  "keys": [
+    {
+      "key": "0x...",
+      "is_active": true,
+      "is_multi_use": false,
+      "usage_count": 0,
+      "created_at": 12345
+    }
+  ],
+  "total_keys": 10,
+  "active_keys": 5
+}
+```
+
+#### Check Whitelist Status
+
+```http
+POST /referral/whitelist/check
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "delegator": "0x...",
+  "validator": "0x..."
+}
+```
+
+**Response:**
+```json
+{
+  "is_whitelisted": true,
+  "whitelisted_by": "0x..."
+}
+```
+
+### Network Stats
+
+#### Get Network Statistics
+
+```http
+GET /stats/network
+```
+
+**Response:**
+```json
+{
+  "total_validators": 101,
+  "active_validators": 85,
+  "total_delegators": 5000,
+  "total_stake": "50000000000000000000000000",
+  "total_delegated": "40000000000000000000000000",
+  "current_epoch": 1500,
+  "current_block": 300000,
+  "block_time": 1.0,
+  "last_epoch_reward": "10000000000000000000000"
+}
+```
+
+#### Get Current Epoch
+
+```http
+GET /stats/epoch
+```
+
+**Response:**
+```json
+{
+  "epoch_number": 1500,
+  "start_block": 300000,
+  "end_block": 300200,
+  "blocks_remaining": 150,
+  "estimated_time_remaining": 150,
+  "epoch_reward": "10000000000000000000000"
+}
+```
+
+### APR
+
+#### Get Network APR
+
+```http
+GET /apr/network
+```
+
+**Response:**
+```json
+{
+  "network_apr": 12.5,
+  "validator_apr": 15.0,
+  "delegator_apr": 10.0,
+  "base_reward_per_epoch": "10000000000000000000000",
+  "calculated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+#### Get Validator APR
+
+```http
+GET /apr/validators/{address}
+```
+
+**Response:**
+```json
+{
+  "address": "0x...",
+  "base_apr": 12.5,
+  "commission_apr": 0.625,
+  "effective_apr": 11.875,
+  "self_stake_apr": 13.125,
+  "delegator_apr": 11.875
+}
+```
+
+### Geo Data
+
+#### Get All Geo Nodes
+
+```http
+GET /geo/nodes
+```
+
+**Response:**
+```json
+{
+  "nodes": [
+    {
+      "address": "0x...",
+      "latitude": 37.7749,
+      "longitude": -122.4194,
+      "node_type": "validator",
+      "country": "US",
+      "city": "San Francisco",
+      "updated_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+#### Get Validator Locations
+
+```http
+GET /geo/validators
+```
+
+Returns only validator node locations.
+
+#### Get Geo Statistics
+
+```http
+GET /geo/stats
+```
+
+**Response:**
+```json
+{
+  "total_nodes": 150,
+  "validators": 85,
+  "rpc_nodes": 50,
+  "archive_nodes": 15,
+  "countries": 25,
+  "distribution": {
+    "US": 30,
+    "DE": 20,
+    "SG": 15
+  }
+}
+```
+
+#### Update Geo Location
+
+```http
+POST /geo/update
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "latitude": 37.7749,
+  "longitude": -122.4194,
+  "node_type": "validator"
+}
+```
+
+### Analytics
+
+#### Get Daily Block Stats
+
+```http
+GET /analytics/blocks/daily?days=30
+```
+
+**Response:**
+```json
+{
+  "stats": [
+    {
+      "date": "2024-01-15",
+      "blocks": 86400,
+      "transactions": 150000,
+      "avg_block_time": 1.0,
+      "total_fees": "1000000000000000000000"
+    }
+  ]
+}
+```
+
+#### Get Validator Reward History
+
+```http
+GET /analytics/validators/{address}/rewards?limit=100
+```
+
+**Response:**
+```json
+{
+  "history": [
+    {
+      "epoch": 1500,
+      "block": 300000,
+      "reward": "100000000000000000000",
+      "commission": "5000000000000000000",
+      "timestamp": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### Transactions
+
+#### List Transactions
+
+```http
+GET /transactions?address={address}&page=1&limit=20&type=stake
+```
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | Filter by address |
+| `page` | int | Page number (default: 1) |
+| `limit` | int | Items per page (default: 20, max: 100) |
+| `type` | string | Filter by type: `stake`, `unstake`, `claim`, `register` |
+
+**Response:**
+```json
+{
+  "transactions": [
+    {
+      "hash": "0x...",
+      "type": "stake",
+      "from": "0x...",
+      "to": "0x...",
+      "value": "10000000000000000000000",
+      "block": 300000,
+      "timestamp": "2024-01-15T10:30:00Z",
+      "status": "success"
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "limit": 20
+}
+```
+
+### Price
+
+#### Get Current Price
+
+```http
+GET /price
+```
+
+**Response:**
+```json
+{
+  "price_usd": 1.25,
+  "price_btc": 0.00003,
+  "change_24h": 5.5,
+  "volume_24h": 1000000,
+  "market_cap": 125000000,
+  "updated_at": "2024-01-15T10:30:00Z"
+}
+```
+
+## Error Responses
+
+All errors follow this format:
+
+```json
+{
+  "error": {
+    "code": "VALIDATOR_NOT_FOUND",
+    "message": "Validator with address 0x... not found",
+    "details": {}
+  }
+}
+```
+
+### Error Codes
+
+| Code | HTTP Status | Description |
+|------|-------------|-------------|
+| `BAD_REQUEST` | 400 | Invalid request parameters |
+| `UNAUTHORIZED` | 401 | Missing or invalid JWT |
+| `FORBIDDEN` | 403 | Insufficient permissions |
+| `VALIDATOR_NOT_FOUND` | 404 | Validator doesn't exist |
+| `DELEGATOR_NOT_FOUND` | 404 | Delegator doesn't exist |
+| `REFERRAL_KEY_INVALID` | 400 | Invalid referral key |
+| `REFERRAL_KEY_EXPIRED` | 400 | Referral key has expired |
+| `REFERRAL_KEY_USED` | 400 | Referral key already used |
+| `RATE_LIMITED` | 429 | Too many requests |
+| `INTERNAL_ERROR` | 500 | Server error |
+| `RPC_UNAVAILABLE` | 503 | Blockchain RPC unavailable |
+
+## Rate Limiting
+
+| Endpoint Type | Limit |
+|---------------|-------|
+| Public read | 100 req/min |
+| Authenticated read | 300 req/min |
+| Write operations | 30 req/min |
+
+Rate limit headers:
+```http
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 95
+X-RateLimit-Reset: 1705315800
+```
+
+## Caching
+
+The API implements server-side caching with Redis:
+
+| Endpoint | Cache TTL |
+|----------|-----------|
+| `/stats/network` | 10 seconds |
+| `/validators` | 30 seconds |
+| `/validators/{address}` | 30 seconds |
+| `/apr/*` | 5 minutes |
+| `/geo/*` | 1 minute |
+| `/price` | 1 minute |
+
+<Callout type="info">
+Cache is automatically invalidated when relevant blockchain events occur.
+</Callout>
+
+## WebSocket (Coming Soon)
+
+Real-time updates via WebSocket:
+
+```
+wss://api.fene.network/ws
+```
+
+Subscribe to events:
+```json
+{
+  "action": "subscribe",
+  "channels": ["blocks", "validators", "delegators"]
+}
+```

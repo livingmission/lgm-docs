@@ -1,0 +1,467 @@
+---
+title: ResonanceSystem Contract
+description: Core staking and validator management contract
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# ResonanceSystem Contract
+
+The **ResonanceSystem** contract is the core of Living Mission's staking infrastructure. It manages validators, delegators, reward distribution, and the proximity reward system.
+
+**Address**: `0x0000000000000000000000000000000000001000`
+
+## Overview
+
+ResonanceSystem handles:
+- Validator registration, staking, and lifecycle management
+- Delegator staking and reward claiming
+- Epoch-based reward distribution
+- Proximity-based reward allocation
+- Emergency controls (inherited from EmergencyControl)
+
+## Data Structures
+
+### Validator Authority (VA)
+
+```solidity
+struct ValidatorAuthority {
+    address payable rewardAddress;   // Where rewards are sent
+    VAStatus status;                 // Current status
+    uint256 selfStake;               // Validator's own stake
+    uint256 totalStake;              // Self + delegated stake
+    uint256 commissionRate;          // Commission in BPS (500-1000)
+    uint256 claimableReward;         // Pending rewards
+    uint256 delegatorRewardPool;     // Pool for delegators
+    uint256 accRewardPerStake;       // Reward accumulator
+    uint256 createdAt;               // Registration block
+    uint256 unstakeBlock;            // Unstake initiation block
+    uint256 activeDCCount;           // Active delegator count
+    address[] stakers;               // Delegator array (proximity order)
+    Metadata metadata;               // Name, phone, details
+}
+
+enum VAStatus {
+    NOT_EXIST,   // 0: Never registered
+    CREATED,     // 1: Registered, not staked
+    STAKED,      // 2: Staked, awaiting activation
+    VALIDATED,   // 3: Active validator
+    UNSTAKED     // 4: Unstaking in progress
+}
+```
+
+### Delegator Contributor (DC)
+
+```solidity
+struct DelegatorContributor {
+    uint256 stakeAmount;      // Delegated amount
+    uint256 rewardDebt;       // For reward calculation
+    uint256 pendingRewards;   // Accumulated rewards
+    uint256 joinedAt;         // Block when staked
+    uint256 lastClaimBlock;   // Last claim block
+    uint256 stakerIndex;      // Position in proximity chain
+    DCStatus status;          // Current status
+    uint256 unstakeBlock;     // Unstake initiation block
+}
+
+enum DCStatus {
+    NOT_EXIST,   // 0: Never staked
+    ACTIVE,      // 1: Currently staking
+    UNSTAKING    // 2: Unstaking in progress
+}
+```
+
+## Validator Functions
+
+### registerValidator
+
+Register as a new validator with metadata.
+
+```solidity
+function registerValidator(
+    address payable rewardAddress,
+    string calldata moniker,
+    string calldata phoneNumber,
+    string calldata details,
+    uint256 commissionRate
+) external returns (bool);
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `rewardAddress` | address | Where to send rewards |
+| `moniker` | string | Display name (1-128 chars) |
+| `phoneNumber` | string | Contact info (optional) |
+| `details` | string | Description (optional) |
+| `commissionRate` | uint256 | 500-1000 BPS (5-10%) |
+
+### stakeValidator
+
+Stake LGM to become eligible for validation.
+
+```solidity
+function stakeValidator() external payable returns (bool);
+```
+
+<Callout type="info">
+Requires minimum 10,000 LGM. Status changes from CREATED → STAKED.
+</Callout>
+
+### addValidatorStake
+
+Add more stake to existing validator.
+
+```solidity
+function addValidatorStake() external payable returns (bool);
+```
+
+### unstakeValidator
+
+Initiate unstaking process.
+
+```solidity
+function unstakeValidator() external returns (bool);
+```
+
+<Callout type="warn">
+Starts 50,000 block lock period. Removes from active set.
+</Callout>
+
+### withdrawValidatorStake
+
+Withdraw stake after lock period.
+
+```solidity
+function withdrawValidatorStake() external returns (bool);
+```
+
+### claimValidatorReward
+
+Claim accumulated validator rewards.
+
+```solidity
+function claimValidatorReward() external returns (bool);
+```
+
+### updateValidatorMetadata
+
+Update validator display information.
+
+```solidity
+function updateValidatorMetadata(
+    string calldata moniker,
+    string calldata phoneNumber,
+    string calldata details
+) external returns (bool);
+```
+
+### updateCommissionRate
+
+Update commission rate (only before activation).
+
+```solidity
+function updateCommissionRate(uint256 newRate) external returns (bool);
+```
+
+## Delegator Functions
+
+### stakeToValidator
+
+Stake LGM to a validator.
+
+```solidity
+function stakeToValidator(address vaAddr) external payable returns (bool);
+```
+
+<Callout type="info">
+Requires whitelist via NFTPassport. Minimum 1,000 LGM.
+</Callout>
+
+### addDelegatorStake
+
+Add more stake to existing delegation.
+
+```solidity
+function addDelegatorStake(address vaAddr) external payable returns (bool);
+```
+
+### unstakeDelegator
+
+Initiate unstaking from a validator.
+
+```solidity
+function unstakeDelegator(address vaAddr) external returns (bool);
+```
+
+<Callout type="warn">
+Removes from proximity chain. 25,000 block lock period.
+</Callout>
+
+### withdrawDelegatorStake
+
+Withdraw stake after lock period.
+
+```solidity
+function withdrawDelegatorStake(address vaAddr) external returns (bool);
+```
+
+### claimDelegatorReward
+
+Claim rewards with proximity distribution.
+
+```solidity
+function claimDelegatorReward(address vaAddr) external returns (bool);
+```
+
+## System Functions
+
+<Callout type="warn">
+These functions can only be called by the consensus engine (block.coinbase).
+</Callout>
+
+### updateValidatorCandidates
+
+Activate eligible validators at epoch boundary.
+
+```solidity
+function updateValidatorCandidates() external returns (address[] memory);
+```
+
+Called at block % 200 == 0. Activates STAKED → VALIDATED.
+
+### distributeBlockReward
+
+Distribute epoch rewards to validators.
+
+```solidity
+function distributeBlockReward(uint256 epochReward) external payable returns (bool);
+```
+
+Called at block % 200 == 0 with accumulated fees.
+
+## Admin Functions
+
+### setProximityConfig
+
+Update proximity reward distribution (admin only).
+
+```solidity
+function setProximityConfig(
+    uint16 newTotalBps,
+    uint16[8] calldata newRewardBps
+) external returns (bool);
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `newTotalBps` | uint16 | Total proximity % (max 8700 = 87%) |
+| `newRewardBps` | uint16[8] | Per-level distribution |
+
+### Inherited from EmergencyControl
+
+```solidity
+function pause() external;
+function unpause() external;
+function emergencyWithdraw(address payable recipient, uint256 amount, string calldata reason) external;
+function changeAdmin(address newAdmin) external;
+```
+
+## View Functions
+
+### getActiveValidators
+
+Get current active validator set.
+
+```solidity
+function getActiveValidators() external view returns (address[] memory);
+```
+
+### getValidatorStakers
+
+Get delegators staked to a validator.
+
+```solidity
+function getValidatorStakers(address vaAddr) external view returns (address[] memory);
+```
+
+### getValidatorInfo
+
+Get comprehensive validator information.
+
+```solidity
+function getValidatorInfo(address vaAddr) external view returns (
+    VAStatus status,
+    uint256 selfStake,
+    uint256 totalStake,
+    uint256 commissionRate,
+    uint256 claimableReward,
+    uint256 stakerCount
+);
+```
+
+### getDelegatorInfo
+
+Get delegator information for a specific validator.
+
+```solidity
+function getDelegatorInfo(address dcAddr, address vaAddr) external view returns (
+    DCStatus status,
+    uint256 stakeAmount,
+    uint256 pendingRewards,
+    uint256 joinedAt,
+    uint256 stakerIndex
+);
+```
+
+### getEstimatedDelegatorReward
+
+Preview delegator rewards with all deductions.
+
+```solidity
+function getEstimatedDelegatorReward(address dcAddr, address vaAddr) external view returns (
+    uint256 pending,         // Gross pending
+    uint256 afterProximity,  // After 87% proximity (13%)
+    uint256 afterTax         // Final after tax
+);
+```
+
+### getEstimatedValidatorReward
+
+Preview validator rewards with tax.
+
+```solidity
+function getEstimatedValidatorReward(address vaAddr) external view returns (
+    uint256 claimable,  // Gross amount
+    uint256 afterTax    // Net after tax
+);
+```
+
+### getProximityConfig
+
+Get current proximity configuration.
+
+```solidity
+function getProximityConfig() external view returns (
+    uint16 totalBps,
+    uint8 depth,
+    uint16[8] memory rewardBps
+);
+```
+
+### getNextEpochReward
+
+Get contract balance (next epoch reward).
+
+```solidity
+function getNextEpochReward() external view returns (uint256);
+```
+
+### getCurrentEpoch
+
+Get current epoch number.
+
+```solidity
+function getCurrentEpoch() external view returns (uint256);
+```
+
+## Events
+
+```solidity
+// Validator Events
+event ValidatorRegistered(address indexed va, string moniker, uint256 timestamp);
+event ValidatorStaked(address indexed va, uint256 amount, uint256 totalStake, uint256 timestamp);
+event ValidatorActivated(address indexed va, uint256 indexed epochNumber);
+event ValidatorUnstaked(address indexed va, uint256 amount, uint256 unlockBlock);
+event ValidatorWithdrawn(address indexed va, uint256 amount);
+event ValidatorRewardClaimed(address indexed va, uint256 gross, uint256 net, uint256 tax);
+event MetadataUpdated(address indexed va);
+event CommissionUpdated(address indexed va, uint256 oldRate, uint256 newRate);
+
+// Delegator Events
+event DelegatorStaked(address indexed dc, address indexed va, uint256 amount, uint256 totalStake, uint256 timestamp);
+event DelegatorUnstaked(address indexed dc, address indexed va, uint256 unlockBlock);
+event DelegatorWithdrawn(address indexed dc, address indexed va, uint256 amount);
+event DelegatorRewardClaimed(address indexed dc, address indexed va, uint256 gross, uint256 net, uint256 tax);
+
+// Proximity Events
+event ProximityRewardsApplied(address indexed claimer, address indexed va, uint256 totalDistributed);
+event ProximityRewardAllocated(address indexed recipient, uint256 amount, uint8 level);
+event ProximityConfigUpdated(uint16 newTotalBps, uint16[8] newRewardBps, address indexed changedBy);
+
+// System Events
+event RewardDistributed(uint256 epochReward, uint256 validatorCount, uint256 indexed epochNumber, uint256 timestamp);
+event ValidatorSetUpdated(address[] validators, uint256 indexed epochNumber);
+event EpochProcessed(uint256 indexed blockNumber, address indexed caller, uint256 reward, bool success);
+event NativeReceived(address indexed from, uint256 amount, uint256 timestamp);
+event Initialized(address indexed admin, uint256 validatorCount, uint256 timestamp);
+```
+
+## Usage Examples
+
+### Register and Stake as Validator
+
+```typescript
+import { ethers } from 'ethers';
+
+const resonanceSystem = new ethers.Contract(
+    "0x0000000000000000000000000000000000001000",
+    RESONANCE_SYSTEM_ABI,
+    signer
+);
+
+// Step 1: Register
+await resonanceSystem.registerValidator(
+    await signer.getAddress(),  // reward address
+    "MyValidator",              // moniker
+    "",                         // phone (optional)
+    "Professional validator",   // details
+    500                         // 5% commission
+);
+
+// Step 2: Stake
+await resonanceSystem.stakeValidator({
+    value: ethers.parseEther("10000")
+});
+
+// Step 3: Wait for activation at next epoch
+```
+
+### Stake as Delegator
+
+```typescript
+// Ensure whitelisted first via NFTPassport
+
+const validatorAddress = "0x...";
+
+await resonanceSystem.stakeToValidator(validatorAddress, {
+    value: ethers.parseEther("1000")
+});
+```
+
+### Claim Rewards
+
+```typescript
+// Validator claim
+const vaTx = await resonanceSystem.claimValidatorReward();
+const vaReceipt = await vaTx.wait();
+
+// Delegator claim
+const dcTx = await resonanceSystem.claimDelegatorReward(validatorAddress);
+const dcReceipt = await dcTx.wait();
+```
+
+### Query Information
+
+```typescript
+// Get validator info
+const [status, selfStake, totalStake, commission, rewards, stakerCount] =
+    await resonanceSystem.getValidatorInfo(validatorAddress);
+
+// Get delegator info
+const [dcStatus, stakeAmount, pending, joinedAt, index] =
+    await resonanceSystem.getDelegatorInfo(delegatorAddress, validatorAddress);
+
+// Get estimated rewards
+const [gross, afterProximity, afterTax] =
+    await resonanceSystem.getEstimatedDelegatorReward(delegatorAddress, validatorAddress);
+```

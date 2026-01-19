@@ -1,0 +1,353 @@
+---
+title: Validators
+description: Complete guide to becoming and operating a validator on Living Mission
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Validators
+
+Validators are the backbone of the Living Mission network. They produce blocks, validate transactions, and secure the network in exchange for rewards.
+
+## Overview
+
+<Callout type="info">
+Living Mission supports a maximum of **101 active validators** at any time, with unlimited validator candidates who can be activated when slots become available.
+</Callout>
+
+### Key Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Max Validators | 101 | Maximum active validators |
+| Min Self-Stake | 10,000 LGM | Minimum stake to become validator |
+| Lock Period | 50,000 blocks | ~14 hours unstake lock |
+| Default Commission | 5% (500 BPS) | Default commission rate |
+| Max Commission | 10% (1000 BPS) | Maximum allowed commission |
+
+## Validator Lifecycle
+
+```
+┌───────────┐    register    ┌───────────┐    stake     ┌───────────┐
+│ NOT_EXIST │ ─────────────► │  CREATED  │ ───────────► │  STAKED   │
+└───────────┘                └───────────┘              └─────┬─────┘
+                                                              │
+                                                         at epoch
+                                                              │
+┌───────────┐    unstake     ┌───────────┐    activate  ┌─────▼─────┐
+│ UNSTAKED  │ ◄───────────── │ VALIDATED │ ◄─────────── │  STAKED   │
+└─────┬─────┘                └───────────┘              └───────────┘
+      │
+      │ after lock period
+      ▼
+┌───────────┐
+│  CREATED  │ (can re-stake)
+└───────────┘
+```
+
+### Status Definitions
+
+| Status | Description |
+|--------|-------------|
+| `NOT_EXIST` | Address has never registered |
+| `CREATED` | Registered but not staked |
+| `STAKED` | Staked, waiting for activation |
+| `VALIDATED` | Active validator, producing blocks |
+| `UNSTAKED` | Initiated unstake, in lock period |
+
+## Becoming a Validator
+
+<Steps>
+<Step>
+### Register as Validator
+
+Call `registerValidator()` with your metadata:
+
+```solidity
+function registerValidator(
+    address payable rewardAddress,  // Where rewards are sent
+    string calldata moniker,        // Display name (max 128 chars)
+    string calldata phoneNumber,    // Contact (optional)
+    string calldata details,        // Description (optional)
+    uint256 commissionRate          // 500-1000 BPS (5-10%)
+) external returns (bool);
+```
+
+**Example using ethers.js:**
+
+```typescript
+const tx = await resonanceSystem.registerValidator(
+    "0xYourRewardAddress",
+    "MyValidator",
+    "+1234567890",
+    "Professional validator with 99.9% uptime",
+    500  // 5% commission
+);
+await tx.wait();
+```
+</Step>
+
+<Step>
+### Stake Minimum Amount
+
+Stake at least 10,000 LGM to become eligible:
+
+```solidity
+function stakeValidator() external payable returns (bool);
+```
+
+**Example:**
+
+```typescript
+const tx = await resonanceSystem.stakeValidator({
+    value: ethers.parseEther("10000")  // 10,000 LGM
+});
+await tx.wait();
+```
+</Step>
+
+<Step>
+### Wait for Activation
+
+At the next epoch (every 200 blocks), your validator will be activated if:
+- Status is `STAKED`
+- Self-stake ≥ 10,000 LGM
+- Active validator count < 101
+
+Once activated, you'll start producing blocks and earning rewards!
+</Step>
+</Steps>
+
+## Validator Operations
+
+### Add More Stake
+
+Top up your stake without affecting status:
+
+```solidity
+function addValidatorStake() external payable returns (bool);
+```
+
+```typescript
+await resonanceSystem.addValidatorStake({
+    value: ethers.parseEther("5000")  // Add 5,000 LGM
+});
+```
+
+### Update Metadata
+
+Change your validator information:
+
+```solidity
+function updateValidatorMetadata(
+    string calldata moniker,
+    string calldata phoneNumber,
+    string calldata details
+) external returns (bool);
+```
+
+### Update Commission Rate
+
+<Callout type="warn">
+Commission can only be updated **before activation** (while in STAKED status).
+</Callout>
+
+```solidity
+function updateCommissionRate(uint256 newRate) external returns (bool);
+```
+
+### Claim Rewards
+
+Claim accumulated validator rewards:
+
+```solidity
+function claimValidatorReward() external returns (bool);
+```
+
+```typescript
+const tx = await resonanceSystem.claimValidatorReward();
+const receipt = await tx.wait();
+
+// Check event for amounts
+const event = receipt.logs.find(
+    log => log.topics[0] === resonanceSystem.interface.getEventTopic('ValidatorRewardClaimed')
+);
+```
+
+### Unstake
+
+Initiate the unstaking process:
+
+```solidity
+function unstakeValidator() external returns (bool);
+```
+
+<Callout type="warn">
+After unstaking, you must wait **50,000 blocks** (~14 hours) before withdrawing.
+</Callout>
+
+### Withdraw Stake
+
+After the lock period, withdraw your stake:
+
+```solidity
+function withdrawValidatorStake() external returns (bool);
+```
+
+## Reward Distribution
+
+### How Rewards Work
+
+1. **Block Fees** accumulate in FeeRecorder
+2. **At Epoch** (every 200 blocks), rewards are distributed
+3. **Per Validator** share is proportional to total stake
+
+### Reward Calculation
+
+```
+Validator Share = (Epoch Reward × Validator Total Stake) / Total Network Stake
+
+Commission = Validator Share × Commission Rate
+Delegator Pool = Validator Share - Commission
+Validator Self-Stake Reward = Delegator Pool × (Self Stake / Total Stake)
+
+Total Validator Reward = Commission + Self-Stake Reward
+```
+
+### Example
+
+```
+Epoch Reward: 1,000 LGM
+Validator Total Stake: 100,000 LGM (10,000 self + 90,000 delegated)
+Total Network Stake: 1,000,000 LGM
+Commission Rate: 5%
+
+Validator Share = 1,000 × 100,000 / 1,000,000 = 100 LGM
+Commission = 100 × 5% = 5 LGM
+Delegator Pool = 100 - 5 = 95 LGM
+Self-Stake Reward = 95 × 10,000 / 100,000 = 9.5 LGM
+
+Total Validator Reward = 5 + 9.5 = 14.5 LGM
+```
+
+## Managing Delegators
+
+### Whitelist System
+
+Validators control who can delegate to them via the **NFT Passport** system:
+
+<Cards>
+  <Card title="Direct Invite" href="/docs/smart-contracts/nft-passport#direct-invite">
+    Directly whitelist a delegator address
+  </Card>
+  <Card title="Referral Keys" href="/docs/smart-contracts/nft-passport#referral-keys">
+    Create shareable referral codes
+  </Card>
+</Cards>
+
+### Creating Referral Keys
+
+```solidity
+// One-time use key
+function createReferralKey(bytes32 key) external;
+
+// Multi-use key with limits
+function createMultiUseKey(
+    bytes32 key,
+    uint256 maxUsage,      // 0 = unlimited
+    uint256 expiresInBlocks // 0 = never
+) external;
+```
+
+**Example:**
+
+```typescript
+// Generate a unique key
+const key = ethers.keccak256(ethers.toUtf8Bytes("my-referral-code-123"));
+
+// Create the referral key
+await nftPassport.createReferralKey(key);
+
+// Share with potential delegators
+console.log("Referral Key:", key);
+```
+
+### Direct Invite
+
+```typescript
+// Whitelist a specific address
+await nftPassport.directInvite("0xDelegatorAddress");
+
+// Batch invite multiple addresses
+await nftPassport.batchDirectInvite([
+    "0xDelegator1",
+    "0xDelegator2",
+    "0xDelegator3"
+]);
+```
+
+## View Functions
+
+### Get Validator Info
+
+```solidity
+function getValidatorInfo(address vaAddr) external view returns (
+    VAStatus status,
+    uint256 selfStake,
+    uint256 totalStake,
+    uint256 commissionRate,
+    uint256 claimableReward,
+    uint256 stakerCount
+);
+```
+
+### Get Estimated Rewards
+
+```solidity
+function getEstimatedValidatorReward(address vaAddr) external view returns (
+    uint256 claimable,    // Gross amount
+    uint256 afterTax      // Net after tax
+);
+```
+
+### Get Delegator List
+
+```solidity
+function getValidatorStakers(address vaAddr) external view returns (
+    address[] memory stakers
+);
+```
+
+## Best Practices
+
+### Infrastructure
+
+- **High Availability**: Run redundant nodes
+- **Monitoring**: Set up 24/7 alerting
+- **Security**: Use hardware security modules (HSM)
+- **Backup**: Maintain hot standby nodes
+
+### Operations
+
+- **Commission**: Set competitive rates (5-10%)
+- **Communication**: Keep delegators informed
+- **Uptime**: Maintain 99.9%+ availability
+- **Updates**: Stay current with network upgrades
+
+### Security
+
+- **Key Management**: Never expose private keys
+- **Access Control**: Use multi-sig for admin operations
+- **Auditing**: Regular security reviews
+- **Incident Response**: Have a plan ready
+
+## Related Topics
+
+<Cards>
+  <Card title="Delegators" href="/docs/delegators" />
+  <Card title="ResonanceSystem Contract" href="/docs/smart-contracts/resonance-system" />
+  <Card title="NFT Passport" href="/docs/smart-contracts/nft-passport" />
+  <Card title="Become a Validator Guide" href="/docs/guides/become-validator" />
+</Cards>

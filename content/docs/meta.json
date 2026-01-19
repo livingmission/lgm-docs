@@ -1,0 +1,20 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "introduction",
+    "---Core Concepts---",
+    "consensus",
+    "validators",
+    "delegators",
+    "---Smart Contracts---",
+    "smart-contracts",
+    "---Integration---",
+    "sdk",
+    "api",
+    "dapps",
+    "---Resources---",
+    "network",
+    "guides"
+  ]
+}

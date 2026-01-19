@@ -1,0 +1,298 @@
+---
+title: Smart Contracts
+description: Overview of Living Mission system contracts
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Smart Contracts
+
+Living Mission uses a set of pre-deployed **system contracts** that are initialized at genesis. These contracts handle all staking, rewards, and governance functionality.
+
+## Contract Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     System Contracts                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │              ResonanceSystem (0x...1000)                 │   │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │   │
+│  │  │  Validator  │ │  Delegator  │ │    Proximity    │   │   │
+│  │  │ Management  │ │ Management  │ │    Rewards      │   │   │
+│  │  └─────────────┘ └─────────────┘ └─────────────────┘   │   │
+│  │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────┐   │   │
+│  │  │   Epoch     │ │   Reward    │ │   Emergency     │   │   │
+│  │  │  Processing │ │Distribution │ │    Control      │   │   │
+│  │  └─────────────┘ └─────────────┘ └─────────────────┘   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                              │                                   │
+│              ┌───────────────┼───────────────┐                  │
+│              ▼               ▼               ▼                   │
+│  ┌─────────────────┐ ┌─────────────┐ ┌─────────────────┐       │
+│  │  NFTPassport    │ │ TaxManager  │ │  RewardManager  │       │
+│  │  (0x...1001)    │ │ (0x...1002) │ │   (0x...1003)   │       │
+│  │                 │ │             │ │                 │       │
+│  │ • Whitelist     │ │ • Tax Calc  │ │ • Block Reward  │       │
+│  │ • Referrals     │ │ • Burn/Dev  │ │ • Dynamic Rate  │       │
+│  │ • Invites       │ │ • Exemptions│ │ • Pending Queue │       │
+│  └─────────────────┘ └─────────────┘ └─────────────────┘       │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Contract Addresses
+
+<Callout type="info">
+System contracts are deployed at deterministic addresses in the genesis block.
+</Callout>
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| **ResonanceSystem** | `0x0000000000000000000000000000000000001000` | Core staking & validator management |
+| **NFTPassport** | `0x0000000000000000000000000000000000001001` | Whitelist & referral system |
+| **TaxManager** | `0x0000000000000000000000000000000000001002` | Reward taxation |
+| **RewardManager** | `0x0000000000000000000000000000000000001003` | Dynamic block rewards |
+| **FeeRecorder** | `0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF` | Fee accumulation |
+| **DAO Treasury** | `0xAfe553BF57DAb198fE672153446CA520a29E1E80` | Undistributed rewards |
+
+## Contract Details
+
+<Cards>
+  <Card
+    title="ResonanceSystem"
+    description="Core contract for validator/delegator management and reward distribution"
+    href="/docs/smart-contracts/resonance-system"
+  />
+  <Card
+    title="NFTPassport"
+    description="Whitelist and referral key management for delegator onboarding"
+    href="/docs/smart-contracts/nft-passport"
+  />
+  <Card
+    title="TaxManager"
+    description="Tax computation, burn mechanism, and exemption management"
+    href="/docs/smart-contracts/tax-manager"
+  />
+  <Card
+    title="EmergencyControl"
+    description="Emergency pause and withdrawal functionality"
+    href="/docs/smart-contracts/emergency-control"
+  />
+</Cards>
+
+## Inheritance Structure
+
+```solidity
+// ResonanceSystem inherits EmergencyControl
+contract ResonanceSystem is EmergencyControl {
+    // Core staking logic
+}
+
+// EmergencyControl provides admin functions
+abstract contract EmergencyControl {
+    function pause() external;
+    function unpause() external;
+    function emergencyWithdraw(...) external;
+    function changeAdmin(address) external;
+}
+```
+
+## Key Constants
+
+### ResonanceSystem
+
+```solidity
+uint16 public constant MAX_VALIDATORS = 101;
+uint256 public constant MIN_VA_STAKE = 10_000 ether;
+uint256 public constant MIN_DC_STAKE = 1_000 ether;
+uint256 public constant VA_LOCK_PERIOD = 50_000;  // blocks
+uint256 public constant DC_LOCK_PERIOD = 25_000;  // blocks
+uint256 public constant DEFAULT_COMMISSION = 500; // 5% BPS
+uint256 public constant MAX_COMMISSION = 1000;    // 10% BPS
+uint256 public constant BLOCK_EPOCH = 200;
+```
+
+### Proximity Configuration
+
+```solidity
+// Default proximity distribution (87% total)
+uint16[8] public proximityRewardBps = [
+    500,   // Level 1: 5%
+    700,   // Level 2: 7%
+    800,   // Level 3: 8%
+    1000,  // Level 4: 10%
+    1200,  // Level 5: 12%
+    1300,  // Level 6: 13%
+    1500,  // Level 7: 15%
+    1700   // Level 8: 17%
+];
+
+// Minimum stake per proximity level
+uint256[8] public MIN_UPLINE_STAKE = [
+    1_000 ether,   // Level 1
+    3_000 ether,   // Level 2
+    5_000 ether,   // Level 3
+    7_000 ether,   // Level 4
+    9_000 ether,   // Level 5
+    11_000 ether,  // Level 6
+    13_000 ether,  // Level 7
+    15_000 ether   // Level 8
+];
+```
+
+### TaxManager
+
+```solidity
+uint16 public burnPercent = 1000;      // 10% default
+uint16 public devSplitPercent = 100;   // 1% of tax to dev
+```
+
+## Events
+
+### ResonanceSystem Events
+
+```solidity
+// Validator Events
+event ValidatorRegistered(address indexed va, string moniker, uint256 timestamp);
+event ValidatorStaked(address indexed va, uint256 amount, uint256 totalStake, uint256 timestamp);
+event ValidatorActivated(address indexed va, uint256 indexed epochNumber);
+event ValidatorUnstaked(address indexed va, uint256 amount, uint256 unlockBlock);
+event ValidatorWithdrawn(address indexed va, uint256 amount);
+event ValidatorRewardClaimed(address indexed va, uint256 gross, uint256 net, uint256 tax);
+
+// Delegator Events
+event DelegatorStaked(address indexed dc, address indexed va, uint256 amount, uint256 totalStake, uint256 timestamp);
+event DelegatorUnstaked(address indexed dc, address indexed va, uint256 unlockBlock);
+event DelegatorWithdrawn(address indexed dc, address indexed va, uint256 amount);
+event DelegatorRewardClaimed(address indexed dc, address indexed va, uint256 gross, uint256 net, uint256 tax);
+
+// Proximity Events
+event ProximityRewardsApplied(address indexed claimer, address indexed va, uint256 totalDistributed);
+event ProximityRewardAllocated(address indexed recipient, uint256 amount, uint8 level);
+
+// System Events
+event RewardDistributed(uint256 epochReward, uint256 validatorCount, uint256 indexed epochNumber, uint256 timestamp);
+event ValidatorSetUpdated(address[] validators, uint256 indexed epochNumber);
+event EpochProcessed(uint256 indexed blockNumber, address indexed caller, uint256 reward, bool success);
+```
+
+### NFTPassport Events
+
+```solidity
+event ReferralKeyCreated(address indexed validator, bytes32 indexed keyHash, bool isMultiUse, uint256 maxUsage, uint256 expiresAt);
+event ReferralKeyUsed(address indexed delegator, address indexed validator, bytes32 indexed keyHash);
+event ReferralKeyRevoked(address indexed validator, bytes32 indexed keyHash);
+event DirectInvite(address indexed validator, address indexed delegator);
+event WhitelistRevoked(address indexed validator, address indexed delegator);
+event DelegatorExited(address indexed delegator, address indexed validator);
+```
+
+### TaxManager Events
+
+```solidity
+event TaxApplied(address indexed user, uint256 totalReward, uint256 userReceive, uint256 burnShare, uint256 devShare, uint16 burnPercent, uint16 splitPercent);
+event TaxConfigUpdated(uint16 burnPercent, uint16 devSplitPercent);
+event TaxEnabledChanged(bool enabled);
+event UserBlacklistUpdated(address indexed user, bool blacklisted);
+event UserWhitelistUpdated(address indexed user, bool whitelisted);
+```
+
+## Security Features
+
+### Reentrancy Protection
+
+All state-changing functions that transfer funds use the `nonReentrant` modifier:
+
+```solidity
+modifier nonReentrant() {
+    require(_status != _ENTERED, "ReentrancyGuard: reentrant call");
+    _status = _ENTERED;
+    _;
+    _status = _NOT_ENTERED;
+}
+```
+
+### Access Control
+
+```solidity
+// Admin-only functions
+modifier onlyAdmin() {
+    require(msg.sender == admin, "Not admin");
+    _;
+}
+
+// System-only functions (consensus engine)
+modifier onlySystem() {
+    require(msg.sender == block.coinbase, "System only");
+    _;
+}
+
+// Pause functionality
+modifier whenNotPaused() {
+    require(!paused, "Contract paused");
+    _;
+}
+```
+
+### Emergency Controls
+
+The system includes a 7-day timelock for emergency withdrawals:
+
+```solidity
+uint256 public constant EMERGENCY_DELAY = 604800; // 7 days in seconds
+
+function emergencyWithdraw(
+    address payable recipient,
+    uint256 amount,
+    string calldata reason
+) external onlyAdmin {
+    require(paused, "Must be paused");
+    require(block.timestamp >= pausedAt + EMERGENCY_DELAY, "Timelock active");
+    // ... withdrawal logic
+}
+```
+
+## Upgradeability
+
+<Callout type="warn">
+System contracts are **NOT upgradeable**. They are deployed at genesis with immutable bytecode. Any changes require a network hard fork.
+</Callout>
+
+This design choice prioritizes:
+- **Security**: No proxy vulnerabilities
+- **Transparency**: Code is immutable and verifiable
+- **Decentralization**: Changes require network consensus
+
+## ABI & Integration
+
+Contract ABIs are available in the SDK:
+
+```typescript
+import { RESONANCE_SYSTEM_ABI, NFT_PASSPORT_ABI, TAX_MANAGER_ABI } from '@fenelabs/fene-sdk';
+
+// Or use with ethers.js
+const resonanceSystem = new ethers.Contract(
+    "0x0000000000000000000000000000000000001000",
+    RESONANCE_SYSTEM_ABI,
+    signer
+);
+```
+
+## Verification
+
+All contracts are verified on the block explorer:
+
+- [ResonanceSystem on Explorer](https://explorer.fene.network/address/0x0000000000000000000000000000000000001000)
+- [NFTPassport on Explorer](https://explorer.fene.network/address/0x0000000000000000000000000000000000001001)
+- [TaxManager on Explorer](https://explorer.fene.network/address/0x0000000000000000000000000000000000001002)
+
+## Related Topics
+
+<Cards>
+  <Card title="Consensus" href="/docs/consensus" />
+  <Card title="SDK Integration" href="/docs/sdk" />
+  <Card title="API Reference" href="/docs/api" />
+</Cards>

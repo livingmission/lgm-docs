@@ -1,0 +1,482 @@
+---
+title: SDK Reference
+description: TypeScript SDK for integrating with Living Mission
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Fene SDK
+
+The official TypeScript SDK for interacting with the Living Mission API and blockchain.
+
+## Installation
+
+```bash
+# npm
+npm install @fenelabs/fene-sdk
+
+# pnpm
+pnpm add @fenelabs/fene-sdk
+
+# yarn
+yarn add @fenelabs/fene-sdk
+```
+
+### Peer Dependencies
+
+For blockchain interactions, install viem:
+
+```bash
+pnpm add viem
+```
+
+## Quick Start
+
+```typescript
+import { createResonanceClient } from "@fenelabs/fene-sdk";
+
+// Create client
+const client = createResonanceClient({
+  baseUrl: "https://api.fene.network",
+});
+
+// Get network stats
+const stats = await client.getNetworkStats();
+console.log(`Total validators: ${stats.total_validators}`);
+
+// Get APR
+const apr = await client.getNetworkAPR();
+console.log(`Network APR: ${apr.network_apr}%`);
+```
+
+## Authentication
+
+The SDK uses Web3 wallet-based authentication:
+
+```typescript
+import { createResonanceClient } from "@fenelabs/fene-sdk";
+import { signMessage } from "viem/wallet";
+
+const client = createResonanceClient({
+  baseUrl: "https://api.fene.network",
+  onTokenExpired: () => {
+    console.log("Token expired, please re-authenticate");
+  },
+});
+
+// 1. Get nonce
+const { message } = await client.getNonce("0xYourAddress");
+
+// 2. Sign message (using viem or wagmi)
+const signature = await signMessage({ message });
+
+// 3. Verify and get JWT
+const auth = await client.verify("0xYourAddress", signature);
+console.log(`Logged in as: ${auth.role}`);
+
+// Now authenticated requests work automatically
+await client.updateGeoLocation({
+  latitude: 37.7749,
+  longitude: -122.4194,
+  node_type: "validator"
+});
+```
+
+## API Reference
+
+### Client Configuration
+
+```typescript
+interface ResonanceClientConfig {
+  baseUrl: string;                    // API base URL
+  onTokenExpired?: () => void;        // Callback when JWT expires
+  onRequest?: (ctx: RequestContext) => void;   // Request interceptor
+  onResponse?: (ctx: ResponseContext) => void; // Response interceptor
+}
+
+const client = createResonanceClient({
+  baseUrl: "https://api.fene.network",
+  onTokenExpired: () => {
+    // Handle token expiration
+    router.push('/login');
+  }
+});
+```
+
+### Authentication
+
+```typescript
+// Get authentication nonce
+const { message, nonce } = await client.getNonce(address);
+
+// Verify signature and get JWT
+const auth = await client.verify(address, signature);
+// Returns: { token, role, address, expires_at }
+
+// Refresh token
+const newAuth = await client.refreshToken();
+```
+
+### Validators
+
+```typescript
+// Get all validators
+const validators = await client.getValidators();
+
+// Get active validators only
+const active = await client.getActiveValidators();
+
+// Get validator candidates (staked, not yet active)
+const candidates = await client.getCandidates();
+
+// Get specific validator details
+const validator = await client.getValidator("0xValidatorAddress");
+
+// Get validator's delegators
+const delegators = await client.getValidatorDelegators("0xValidatorAddress");
+```
+
+### Delegators
+
+```typescript
+// Get delegator info
+const delegator = await client.getDelegator("0xDelegatorAddress");
+
+// Get delegator's stakes across validators
+const stakes = await client.getDelegatorStakes("0xDelegatorAddress");
+
+// Get delegator's rewards
+const rewards = await client.getDelegatorRewards("0xDelegatorAddress");
+```
+
+### Referral System
+
+```typescript
+// Get referral key info
+const keyInfo = await client.getReferralKey("0xKeyHash");
+
+// Get validator's referral keys
+const keys = await client.getValidatorKeys("0xValidatorAddress");
+
+// Check whitelist status (requires auth)
+const whitelist = await client.checkWhitelist({
+  delegator: "0xDelegatorAddress",
+  validator: "0xValidatorAddress"
+});
+```
+
+### Geo Data
+
+```typescript
+// Get all geo nodes
+const nodes = await client.getGeoNodes();
+
+// Get validator locations
+const validatorLocations = await client.getGeoValidators();
+
+// Get geo statistics
+const geoStats = await client.getGeoStats();
+
+// Update your location (requires auth)
+await client.updateGeoLocation({
+  latitude: 37.7749,
+  longitude: -122.4194,
+  node_type: "validator" // or "rpc", "archive"
+});
+```
+
+### Network Stats
+
+```typescript
+// Get network statistics
+const stats = await client.getNetworkStats();
+// Returns: { total_validators, active_validators, total_stake, ... }
+
+// Get current epoch info
+const epoch = await client.getCurrentEpoch();
+// Returns: { epoch_number, start_block, end_block, ... }
+```
+
+### APR (Annual Percentage Rate)
+
+```typescript
+// Get network-wide APR
+const networkAPR = await client.getNetworkAPR();
+// Returns: { network_apr, validator_apr, delegator_apr }
+
+// Get specific validator's APR breakdown
+const validatorAPR = await client.getValidatorAPR("0xValidatorAddress");
+// Returns: { base_apr, commission_apr, effective_apr }
+```
+
+### Storage
+
+```typescript
+// Upload avatar (requires auth)
+const upload = await client.uploadAvatar(file);
+// Returns: { url, hash }
+
+// Get avatar URL
+const avatar = await client.getAvatar("0xAddress");
+// Returns: { url }
+```
+
+### Analytics
+
+```typescript
+// Get daily block statistics
+const dailyStats = await client.getDailyBlockStats(30); // Last 30 days
+
+// Get validator reward history
+const rewardHistory = await client.getValidatorRewardHistory(
+  "0xValidatorAddress",
+  100 // Last 100 entries
+);
+```
+
+### Transactions
+
+```typescript
+// Get transactions list
+const txs = await client.getTransactions({
+  address: "0xAddress",
+  page: 1,
+  limit: 20,
+  type: "stake" // Optional filter
+});
+
+// Get transaction stats
+const txStats = await client.getTransactionStats("0xAddress");
+```
+
+### Price
+
+```typescript
+// Get current LGM price
+const price = await client.getPrice();
+// Returns: { price_usd, price_btc, change_24h }
+```
+
+## Error Handling
+
+The SDK provides structured error handling:
+
+```typescript
+import {
+  createResonanceClient,
+  ResonanceError,
+  ErrorCode,
+  isAuthError,
+  isNotFoundError,
+  isNetworkError,
+} from "@fenelabs/fene-sdk";
+
+try {
+  const validator = await client.getValidator("0xinvalid");
+} catch (error) {
+  if (error instanceof ResonanceError) {
+    console.log(`Error code: ${error.code}`);
+    console.log(`Message: ${error.message}`);
+    console.log(`Status: ${error.statusCode}`);
+
+    // Check specific error types
+    if (error.is(ErrorCode.VALIDATOR_NOT_FOUND)) {
+      // Handle validator not found
+    }
+
+    // Or use helper functions
+    if (isAuthError(error)) {
+      // Re-authenticate
+    } else if (isNotFoundError(error)) {
+      // Handle not found
+    } else if (isNetworkError(error)) {
+      // Handle network issues
+    }
+  }
+}
+```
+
+### Error Codes
+
+| Category | Codes |
+|----------|-------|
+| **Validator** | `VALIDATOR_NOT_FOUND`, `VALIDATOR_INACTIVE` |
+| **Delegator** | `DELEGATOR_NOT_FOUND`, `NOT_WHITELISTED` |
+| **Referral** | `REFERRAL_KEY_INVALID`, `REFERRAL_KEY_EXPIRED`, `REFERRAL_KEY_USED` |
+| **Auth** | `INVALID_SIGNATURE`, `NONCE_EXPIRED`, `UNAUTHORIZED` |
+| **Service** | `RPC_UNAVAILABLE`, `CACHE_UNAVAILABLE`, `DATABASE_UNAVAILABLE` |
+| **General** | `BAD_REQUEST`, `INTERNAL_ERROR`, `RATE_LIMITED` |
+
+## Types
+
+All types are exported for TypeScript users:
+
+```typescript
+import type {
+  // Common
+  Address,
+  PaginatedResponse,
+
+  // Auth
+  NonceResponse,
+  AuthVerifyRequest,
+  AuthResponse,
+  RefreshResponse,
+
+  // Validators
+  ValidatorStatus,
+  Validator,
+  ValidatorSummary,
+
+  // Delegators
+  DelegatorStatus,
+  Delegator,
+  DelegatorStake,
+  DelegatorRewards,
+
+  // Referral
+  ReferralKey,
+  WhitelistCheckRequest,
+  WhitelistCheckResponse,
+
+  // Geo
+  GeoNode,
+  GeoStats,
+  GeoUpdateRequest,
+
+  // Stats
+  NetworkStats,
+  EpochInfo,
+
+  // APR
+  NetworkAPR,
+  ValidatorAPR,
+
+  // Analytics
+  DailyBlockStats,
+  RewardHistory,
+
+  // Transactions
+  Transaction,
+  TransactionsList,
+  TransactionStats,
+
+  // Price
+  PriceResponse,
+} from "@fenelabs/fene-sdk";
+```
+
+## Event Bus
+
+For internal communication between components:
+
+```typescript
+import { eventBus } from "@fenelabs/fene-sdk";
+
+// Subscribe to events
+eventBus.on('auth:expired', () => {
+  // Handle token expiration
+});
+
+eventBus.on('network:changed', (chainId) => {
+  // Handle network change
+});
+
+// Emit events
+eventBus.emit('auth:logout');
+```
+
+## React Integration
+
+### With React Query
+
+```typescript
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { createResonanceClient } from '@fenelabs/fene-sdk';
+
+const client = createResonanceClient({
+  baseUrl: process.env.NEXT_PUBLIC_API_URL!
+});
+
+// Hook for validators
+export function useValidators() {
+  return useQuery({
+    queryKey: ['validators'],
+    queryFn: () => client.getValidators(),
+    staleTime: 30_000, // 30 seconds
+  });
+}
+
+// Hook for specific validator
+export function useValidator(address: string) {
+  return useQuery({
+    queryKey: ['validator', address],
+    queryFn: () => client.getValidator(address),
+    enabled: !!address,
+  });
+}
+
+// Hook for network stats
+export function useNetworkStats() {
+  return useQuery({
+    queryKey: ['networkStats'],
+    queryFn: () => client.getNetworkStats(),
+    refetchInterval: 10_000, // Refresh every 10s
+  });
+}
+```
+
+### With Wagmi
+
+```typescript
+import { useAccount, useSignMessage } from 'wagmi';
+import { createResonanceClient } from '@fenelabs/fene-sdk';
+
+const client = createResonanceClient({
+  baseUrl: process.env.NEXT_PUBLIC_API_URL!
+});
+
+export function useAuth() {
+  const { address } = useAccount();
+  const { signMessageAsync } = useSignMessage();
+
+  const login = async () => {
+    if (!address) throw new Error('Not connected');
+
+    // Get nonce
+    const { message } = await client.getNonce(address);
+
+    // Sign
+    const signature = await signMessageAsync({ message });
+
+    // Verify
+    const auth = await client.verify(address, signature);
+
+    return auth;
+  };
+
+  return { login };
+}
+```
+
+## Caching
+
+<Callout type="info">
+The SDK does not implement client-side caching. All caching is handled server-side by the API with Redis, ensuring consistent data across all consumers.
+</Callout>
+
+Cache TTLs by endpoint:
+- Network stats: 10 seconds
+- Validators list: 30 seconds
+- Validator details: 30 seconds
+- APR data: 5 minutes
+- Geo data: 1 minute
+
+## Related Topics
+
+<Cards>
+  <Card title="API Reference" href="/docs/api" />
+  <Card title="Smart Contracts" href="/docs/smart-contracts" />
+  <Card title="Integration Guide" href="/docs/guides/integration" />
+</Cards>

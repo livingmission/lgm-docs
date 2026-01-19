@@ -1,0 +1,305 @@
+---
+title: DApps
+description: Living Mission decentralized applications
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Living Mission DApps
+
+Living Mission provides a suite of decentralized applications for interacting with the network.
+
+## Official DApps
+
+### Staking Dashboard
+
+The main application for staking, delegation, and validator management.
+
+**URL**: https://app.fene.network
+
+**Features**:
+- Connect wallet (MetaMask, WalletConnect, etc.)
+- View and compare validators
+- Stake/unstake LGM
+- Claim rewards
+- Manage referral keys
+- Track earnings and analytics
+
+### Block Explorer
+
+Explore blocks, transactions, and addresses on the network.
+
+**URL**: https://explorer.fene.network
+
+**Features**:
+- Search transactions, blocks, addresses
+- View validator statistics
+- Contract verification
+- Token tracking
+- API access
+
+### Geo Map
+
+Visualize the global distribution of validators and nodes.
+
+**URL**: https://app.fene.network/geo-maps
+
+**Features**:
+- Interactive 3D globe
+- Real-time node locations
+- Network statistics overlay
+- Validator distribution by region
+
+## DApp Architecture
+
+The Living Mission DApps are built with modern web technologies:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     LGM DApps Stack                          │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                    Frontend                          │   │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────────────────┐ │   │
+│  │  │Next.js  │  │ React   │  │   TailwindCSS       │ │   │
+│  │  │  16+    │  │  19+    │  │   + Radix UI        │ │   │
+│  │  └─────────┘  └─────────┘  └─────────────────────┘ │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                   Web3 Layer                         │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │   │
+│  │  │   Wagmi     │  │ RainbowKit  │  │    Viem     │ │   │
+│  │  │  (Hooks)    │  │  (Wallet)   │  │  (Client)   │ │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘ │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                   Data Layer                         │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │   │
+│  │  │  Fene SDK   │  │React Query  │  │   Zustand   │ │   │
+│  │  │   (API)     │  │  (Cache)    │  │  (State)    │ │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘ │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Key Features
+
+### Overview Dashboard
+
+The main dashboard provides:
+
+- **Welcome Header**: Personalized greeting and quick stats
+- **Section Cards**: Key metrics at a glance
+- **Validator Analytics**: Performance charts
+- **Epoch Cycle Card**: Current epoch progress
+- **Staking Grid**: Visual stake distribution
+- **Recent Activity**: Latest validator actions
+
+### Validator Management
+
+For validators:
+
+- **Registration Form**: Register with metadata
+- **Staking Interface**: Stake and manage funds
+- **Delegator Management**: View and manage delegators
+- **Referral System**: Create and track referral keys
+- **Reward Claims**: Claim accumulated rewards
+- **Analytics**: Performance metrics and history
+
+### Delegator Interface
+
+For delegators:
+
+- **Validator Browser**: Search and filter validators
+- **Staking Form**: Stake to selected validator
+- **Portfolio View**: All stakes across validators
+- **Reward Tracking**: Pending and claimed rewards
+- **Proximity Position**: Your position in the chain
+
+### Leaderboard
+
+Competitive rankings:
+
+- **Top Validators**: By total stake
+- **Top Delegators**: By stake amount
+- **Hall of Fame**: Historical achievements
+- **Floating Showcase**: Featured validators
+
+### Settings
+
+User preferences:
+
+- **Theme**: Light/dark mode
+- **Notifications**: Alert preferences
+- **Geo Settings**: Location sharing
+- **Account**: Wallet management
+
+## Technology Stack
+
+### Frontend
+
+| Technology | Purpose |
+|------------|---------|
+| Next.js 16 | React framework |
+| React 19 | UI library |
+| TypeScript | Type safety |
+| TailwindCSS 4 | Styling |
+| Radix UI | Accessible components |
+| Recharts | Data visualization |
+| MapLibre GL | 3D globe/maps |
+| Framer Motion | Animations |
+
+### Web3
+
+| Technology | Purpose |
+|------------|---------|
+| Wagmi | React hooks for Ethereum |
+| RainbowKit | Wallet connection |
+| Viem | TypeScript Ethereum client |
+| @fenelabs/fene-sdk | LGM API client |
+
+### State Management
+
+| Technology | Purpose |
+|------------|---------|
+| React Query | Server state & caching |
+| Zustand | Client state |
+| React Hook Form | Form handling |
+| Zod | Validation |
+
+## Building Custom DApps
+
+### Setup
+
+```bash
+# Create new Next.js app
+npx create-next-app@latest my-lgm-dapp
+cd my-lgm-dapp
+
+# Install dependencies
+pnpm add @fenelabs/fene-sdk wagmi viem @rainbow-me/rainbowkit @tanstack/react-query
+```
+
+### Configure Wagmi
+
+```typescript
+// config/wagmi.ts
+import { createConfig, http } from 'wagmi';
+import { defineChain } from 'viem';
+
+export const livingMission = defineChain({
+  id: 5881,
+  name: 'Living Mission',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'Living Mission',
+    symbol: 'LGM',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.fene.network'] },
+  },
+  blockExplorers: {
+    default: { name: 'Explorer', url: 'https://explorer.fene.network' },
+  },
+});
+
+export const config = createConfig({
+  chains: [livingMission],
+  transports: {
+    [livingMission.id]: http(),
+  },
+});
+```
+
+### Use SDK
+
+```typescript
+// hooks/useValidators.ts
+import { useQuery } from '@tanstack/react-query';
+import { createResonanceClient } from '@fenelabs/fene-sdk';
+
+const client = createResonanceClient({
+  baseUrl: 'https://api.fene.network',
+});
+
+export function useValidators() {
+  return useQuery({
+    queryKey: ['validators'],
+    queryFn: () => client.getValidators(),
+  });
+}
+
+export function useNetworkStats() {
+  return useQuery({
+    queryKey: ['networkStats'],
+    queryFn: () => client.getNetworkStats(),
+    refetchInterval: 10_000,
+  });
+}
+```
+
+### Interact with Contracts
+
+```typescript
+// hooks/useStaking.ts
+import { useWriteContract, useReadContract } from 'wagmi';
+import { parseEther } from 'viem';
+import { RESONANCE_SYSTEM_ABI } from '@/config/abis';
+
+const RESONANCE_SYSTEM = '0x0000000000000000000000000000000000001000';
+
+export function useStakeToValidator() {
+  const { writeContract, isPending } = useWriteContract();
+
+  const stake = async (validatorAddress: string, amount: string) => {
+    await writeContract({
+      address: RESONANCE_SYSTEM,
+      abi: RESONANCE_SYSTEM_ABI,
+      functionName: 'stakeToValidator',
+      args: [validatorAddress],
+      value: parseEther(amount),
+    });
+  };
+
+  return { stake, isPending };
+}
+
+export function useValidatorInfo(address: string) {
+  return useReadContract({
+    address: RESONANCE_SYSTEM,
+    abi: RESONANCE_SYSTEM_ABI,
+    functionName: 'getValidatorInfo',
+    args: [address],
+  });
+}
+```
+
+## Resources
+
+<Cards>
+  <Card
+    title="SDK Documentation"
+    description="Complete SDK reference"
+    href="/docs/sdk"
+  />
+  <Card
+    title="API Reference"
+    description="REST API documentation"
+    href="/docs/api"
+  />
+  <Card
+    title="Smart Contracts"
+    description="Contract interfaces and ABIs"
+    href="/docs/smart-contracts"
+  />
+  <Card
+    title="GitHub"
+    description="Source code and examples"
+    href="https://github.com/fenelabs"
+  />
+</Cards>

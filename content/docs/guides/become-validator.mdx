@@ -1,0 +1,382 @@
+---
+title: Become a Validator
+description: Step-by-step guide to becoming a validator on Living Mission
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+
+# Become a Validator
+
+This guide walks you through the complete process of becoming a validator on the Living Mission network.
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- **10,000+ LGM tokens** for minimum stake
+- **Server infrastructure** meeting requirements
+- **Technical knowledge** of running blockchain nodes
+- **Wallet** (MetaMask or compatible)
+
+### Hardware Requirements
+
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| CPU | 8 cores | 16+ cores |
+| RAM | 32 GB | 64 GB |
+| Storage | 500 GB NVMe SSD | 1 TB NVMe SSD |
+| Network | 100 Mbps | 1 Gbps |
+| IP | Static IP | Static IP + DDoS protection |
+
+## Setup Process
+
+<Steps>
+<Step>
+### Set Up Your Node
+
+First, set up a Living Mission node on your server.
+
+**Install Dependencies:**
+```bash
+# Ubuntu/Debian
+sudo apt update
+sudo apt install -y build-essential git
+
+# Install Go 1.21+
+wget https://go.dev/dl/go1.21.5.linux-amd64.tar.gz
+sudo tar -C /usr/local -xzf go1.21.5.linux-amd64.tar.gz
+export PATH=$PATH:/usr/local/go/bin
+```
+
+**Clone and Build:**
+```bash
+git clone https://github.com/fenelabs/fene-geth.git
+cd fene-geth
+make geth
+```
+
+**Initialize Node:**
+```bash
+# Download genesis file
+wget https://raw.githubusercontent.com/fenelabs/network-config/main/mainnet/genesis.json
+
+# Initialize data directory
+./build/bin/geth init --datadir ~/.fene genesis.json
+```
+
+**Start Node:**
+```bash
+./build/bin/geth \
+  --datadir ~/.fene \
+  --networkid 5881 \
+  --http \
+  --http.addr 0.0.0.0 \
+  --http.port 8545 \
+  --http.api eth,net,web3 \
+  --ws \
+  --ws.addr 0.0.0.0 \
+  --ws.port 8546 \
+  --bootnodes "enode://..." \
+  --syncmode full
+```
+
+Wait for your node to fully sync before proceeding.
+</Step>
+
+<Step>
+### Generate Validator Keys
+
+Create a new account for your validator:
+
+```bash
+./build/bin/geth account new --datadir ~/.fene
+```
+
+**Important:** Securely backup your keystore file and password!
+
+You'll receive an address like: `0x1234...abcd`
+</Step>
+
+<Step>
+### Fund Your Validator Account
+
+Transfer at least **10,000 LGM** to your validator address.
+
+You can:
+- Transfer from an exchange
+- Transfer from another wallet
+- Use the testnet faucet (for testnet only)
+
+Verify balance:
+```bash
+./build/bin/geth attach ~/.fene/geth.ipc --exec "eth.getBalance('0xYourAddress')"
+```
+</Step>
+
+<Step>
+### Register as Validator
+
+Connect to the staking DApp or use the contract directly.
+
+**Using the DApp:**
+1. Go to https://app.fene.network
+2. Connect your wallet
+3. Navigate to "Become Validator"
+4. Fill in your details:
+   - **Moniker**: Your validator name
+   - **Commission**: 5-10%
+   - **Details**: Description (optional)
+5. Click "Register"
+
+**Using Contract Directly:**
+```typescript
+import { ethers } from 'ethers';
+
+const RESONANCE_SYSTEM = "0x0000000000000000000000000000000000001000";
+const ABI = [...]; // ResonanceSystem ABI
+
+const provider = new ethers.JsonRpcProvider("https://rpc.fene.network");
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+const contract = new ethers.Contract(RESONANCE_SYSTEM, ABI, wallet);
+
+// Register
+const tx = await contract.registerValidator(
+  wallet.address,           // reward address
+  "MyValidator",            // moniker
+  "",                       // phone (optional)
+  "Professional validator", // details
+  500                       // 5% commission (in BPS)
+);
+await tx.wait();
+console.log("Registered!");
+```
+</Step>
+
+<Step>
+### Stake Your LGM
+
+After registration, stake your tokens:
+
+**Using the DApp:**
+1. Navigate to "My Validator"
+2. Enter stake amount (minimum 10,000 LGM)
+3. Click "Stake"
+4. Confirm transaction
+
+**Using Contract:**
+```typescript
+const tx = await contract.stakeValidator({
+  value: ethers.parseEther("10000") // 10,000 LGM
+});
+await tx.wait();
+console.log("Staked!");
+```
+
+Your status changes from `CREATED` → `STAKED`.
+</Step>
+
+<Step>
+### Configure Mining
+
+Enable block production on your node:
+
+```bash
+# Unlock your account
+./build/bin/geth attach ~/.fene/geth.ipc
+
+# In the console:
+> personal.unlockAccount("0xYourAddress", "password", 0)
+> miner.setEtherbase("0xYourAddress")
+```
+
+Or start with mining enabled:
+```bash
+./build/bin/geth \
+  --datadir ~/.fene \
+  --networkid 5881 \
+  --mine \
+  --miner.etherbase 0xYourAddress \
+  --unlock 0xYourAddress \
+  --password /path/to/password.txt \
+  --allow-insecure-unlock \
+  # ... other flags
+```
+
+<Callout type="warn">
+Never expose your unlocked node to the public internet. Use a firewall and VPN.
+</Callout>
+</Step>
+
+<Step>
+### Wait for Activation
+
+At the next epoch (every 200 blocks, ~3.3 minutes), your validator will be activated if:
+
+- Status is `STAKED`
+- Self-stake ≥ 10,000 LGM
+- Active validator count < 101
+
+Check your status:
+```typescript
+const [status, selfStake, totalStake, commission, rewards, stakerCount] =
+  await contract.getValidatorInfo(validatorAddress);
+
+console.log("Status:", ["NOT_EXIST", "CREATED", "STAKED", "VALIDATED", "UNSTAKED"][status]);
+```
+
+Once `VALIDATED`, you'll start producing blocks and earning rewards!
+</Step>
+</Steps>
+
+## Post-Setup Tasks
+
+### Set Up Monitoring
+
+Monitor your validator's performance:
+
+```bash
+# Install Prometheus + Grafana
+# Configure geth metrics
+./build/bin/geth \
+  --metrics \
+  --metrics.addr 127.0.0.1 \
+  --metrics.port 6060 \
+  # ... other flags
+```
+
+### Configure Alerts
+
+Set up alerts for:
+- Node going offline
+- Missed blocks
+- Low disk space
+- High memory usage
+
+### Backup Strategy
+
+Regularly backup:
+- Keystore files
+- Node data (optional, can resync)
+- Configuration files
+
+## Managing Your Validator
+
+### Claim Rewards
+
+```typescript
+const tx = await contract.claimValidatorReward();
+await tx.wait();
+```
+
+### Add More Stake
+
+```typescript
+const tx = await contract.addValidatorStake({
+  value: ethers.parseEther("5000")
+});
+await tx.wait();
+```
+
+### Update Metadata
+
+```typescript
+const tx = await contract.updateValidatorMetadata(
+  "New Moniker",
+  "+1234567890",
+  "Updated description"
+);
+await tx.wait();
+```
+
+### Invite Delegators
+
+Create referral keys to grow your delegation:
+
+```typescript
+const NFT_PASSPORT = "0x0000000000000000000000000000000000001001";
+const passport = new ethers.Contract(NFT_PASSPORT, NFT_PASSPORT_ABI, wallet);
+
+// Create referral key
+const key = ethers.keccak256(ethers.toUtf8Bytes("my-invite-code"));
+await passport.createReferralKey(key);
+
+// Share the key with potential delegators
+console.log("Referral Key:", key);
+```
+
+## Unstaking
+
+If you need to exit:
+
+```typescript
+// 1. Initiate unstake
+await contract.unstakeValidator();
+
+// 2. Wait 50,000 blocks (~14 hours)
+
+// 3. Withdraw
+await contract.withdrawValidatorStake();
+```
+
+<Callout type="warn">
+Unstaking removes you from the active set immediately. You'll stop earning rewards.
+</Callout>
+
+## Best Practices
+
+### Security
+
+- Use hardware security modules (HSM) for key storage
+- Enable firewall, only expose necessary ports
+- Use VPN for admin access
+- Regular security audits
+- Multi-sig for reward withdrawals
+
+### Operations
+
+- Maintain 99.9%+ uptime
+- Monitor block production
+- Keep software updated
+- Have a disaster recovery plan
+- Document all procedures
+
+### Community
+
+- Communicate with delegators
+- Be transparent about fees
+- Participate in governance
+- Help other validators
+
+## Troubleshooting
+
+### Node Not Syncing
+
+```bash
+# Check peer count
+./build/bin/geth attach ~/.fene/geth.ipc --exec "admin.peers.length"
+
+# Add more peers
+./build/bin/geth attach ~/.fene/geth.ipc --exec "admin.addPeer('enode://...')"
+```
+
+### Not Producing Blocks
+
+1. Verify node is synced
+2. Check account is unlocked
+3. Verify you're in active set
+4. Check logs for errors
+
+### Transaction Failing
+
+- Ensure sufficient gas
+- Check nonce is correct
+- Verify contract parameters
+
+## Support
+
+Need help? Reach out:
+
+- **Discord**: #validator-support channel
+- **GitHub**: Open an issue
+- **Email**: validators@fene.network

@@ -1,13 +1,103 @@
 ---
-title: Hello World
-description: Your first document
+title: Living Mission Documentation
+description: Complete documentation for Living Mission (LGM) - A DPoS Blockchain Staking Platform
 ---
 
-Welcome to the docs! You can start writing documents in `/content/docs`.
+import { Cards, Card } from 'fumadocs-ui/components/card';
 
-## What is Next?
+# Living Mission (LGM)
+
+Welcome to the official documentation for **Living Mission (LGM)** - a next-generation Delegated Proof-of-Stake (DPoS) blockchain staking platform similar to BNB Chain, Cosmos, and other leading networks.
+
+## What is Living Mission?
+
+Living Mission is a Web3 staking platform that provides:
+
+- **DPoS Consensus** - Resonance consensus engine with up to 101 validators
+- **Unlimited Delegators** - Stake your tokens with any validator
+- **Proximity Rewards** - Unique 8-level reward distribution system
+- **Enterprise Security** - Multi-sig wallets, slashing protection, and 24/7 monitoring
+
+## Key Features
 
 <Cards>
-  <Card title="Learn more about Next.js" href="https://nextjs.org/docs" />
-  <Card title="Learn more about Fumadocs" href="https://fumadocs.dev" />
+  <Card title="🔐 Resonance Consensus" href="/docs/consensus" />
+  <Card title="👥 Validators (101 Max)" href="/docs/validators" />
+  <Card title="💰 Delegator Staking" href="/docs/delegators" />
+  <Card title="📜 Smart Contracts" href="/docs/smart-contracts" />
+  <Card title="🛠️ SDK & API" href="/docs/sdk" />
+  <Card title="🌐 Network Info" href="/docs/network" />
 </Cards>
+
+## Quick Stats
+
+| Metric | Value |
+|--------|-------|
+| Max Validators | 101 |
+| Min Validator Stake | 10,000 LGM |
+| Min Delegator Stake | 1,000 LGM |
+| Block Time | ~1 second |
+| Epoch Length | 200 blocks |
+| Validator Lock Period | 50,000 blocks |
+| Delegator Lock Period | 25,000 blocks |
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Living Mission Network                    │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │  Resonance  │  │   System    │  │    NFT Passport     │  │
+│  │  Consensus  │  │  Contracts  │  │  (Whitelist/Refer)  │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │    Tax      │  │   Reward    │  │     Emergency       │  │
+│  │   Manager   │  │   Manager   │  │      Control        │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│                      DApps & SDK Layer                       │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
+│  │   LGM SDK   │  │   LGM API   │  │     LGM DApps       │  │
+│  │ (TypeScript)│  │    (Go)     │  │    (Next.js)        │  │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Getting Started
+
+<Cards>
+  <Card
+    title="For Validators"
+    description="Learn how to become a validator and secure the network"
+    href="/docs/guides/become-validator"
+  />
+  <Card
+    title="For Delegators"
+    description="Start staking your LGM tokens and earn rewards"
+    href="/docs/guides/start-staking"
+  />
+  <Card
+    title="For Developers"
+    description="Integrate with LGM using our SDK and API"
+    href="/docs/sdk"
+  />
+</Cards>
+
+## System Contracts
+
+Living Mission uses pre-deployed system contracts at genesis:
+
+| Contract | Address | Description |
+|----------|---------|-------------|
+| ResonanceSystem | `0x...1000` | Core staking & validator management |
+| NFTPassport | `0x...1001` | Whitelist & referral system |
+| TaxManager | `0x...1002` | Reward taxation & distribution |
+| RewardManager | `0x...1003` | Dynamic block reward management |
+
+## Community & Support
+
+- **Website**: [livingmission.io](https://livingmission.io)
+- **GitHub**: [github.com/fenelabs](https://github.com/fenelabs)
+- **Discord**: Join our community
+- **Twitter**: Follow us for updates

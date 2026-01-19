@@ -1,0 +1,365 @@
+---
+title: Delegators
+description: Complete guide to staking as a delegator on Living Mission
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Delegators
+
+Delegators stake their LGM tokens with validators to earn rewards without running infrastructure. Living Mission supports **unlimited delegators** per validator.
+
+## Overview
+
+<Callout type="info">
+Delegators earn rewards proportional to their stake, minus validator commission and proximity distribution.
+</Callout>
+
+### Key Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Min Stake | 1,000 LGM | Minimum delegation amount |
+| Lock Period | 25,000 blocks | ~7 hours unstake lock |
+| Proximity Levels | 8 | Reward distribution levels |
+| Proximity Total | 87% | Total distributed to uplines |
+| Delegator Keeps | 13% | Base reward after proximity |
+
+## Delegator Lifecycle
+
+```
+┌───────────┐    stake      ┌───────────┐    unstake    ┌───────────┐
+│ NOT_EXIST │ ────────────► │  ACTIVE   │ ────────────► │ UNSTAKING │
+└───────────┘               └───────────┘               └─────┬─────┘
+      ▲                                                       │
+      │                    after lock period                  │
+      └───────────────────────────────────────────────────────┘
+```
+
+### Status Definitions
+
+| Status | Description |
+|--------|-------------|
+| `NOT_EXIST` | Never staked to this validator |
+| `ACTIVE` | Currently staking and earning rewards |
+| `UNSTAKING` | Initiated unstake, in lock period |
+
+## Getting Started
+
+<Steps>
+<Step>
+### Get Whitelisted
+
+Before staking, you must be whitelisted by the validator. Two options:
+
+**Option A: Use Referral Key**
+```typescript
+// Get referral key from validator
+const referralKey = "0x..."; // Provided by validator
+
+// Use the key to get whitelisted
+await nftPassport.useReferralKey(referralKey);
+```
+
+**Option B: Direct Invite**
+Ask the validator to directly invite your address.
+</Step>
+
+<Step>
+### Stake to Validator
+
+Once whitelisted, stake your LGM:
+
+```solidity
+function stakeToValidator(address vaAddr) external payable returns (bool);
+```
+
+```typescript
+const validatorAddress = "0xValidatorAddress";
+
+const tx = await resonanceSystem.stakeToValidator(validatorAddress, {
+    value: ethers.parseEther("1000")  // 1,000 LGM minimum
+});
+await tx.wait();
+```
+</Step>
+
+<Step>
+### Earn Rewards
+
+Rewards accumulate automatically every epoch (200 blocks). Your position in the **proximity chain** affects your rewards.
+</Step>
+</Steps>
+
+## Proximity Reward System
+
+Living Mission uses a unique **Proximity-Based Reward Distribution** system. When you claim rewards, 87% is distributed to the 8 delegators who staked before you.
+
+### How It Works
+
+```
+Delegator Chain (by stake order):
+┌────┐   ┌────┐   ┌────┐   ┌────┐   ┌────┐   ┌────┐
+│ D1 │ → │ D2 │ → │ D3 │ → │ D4 │ → │ D5 │ → │ D6 │ (claims)
+└────┘   └────┘   └────┘   └────┘   └────┘   └────┘
+  ▲        ▲        ▲        ▲        ▲
+  │        │        │        │        │
+ 17%      15%      13%      12%      10%    ← Receives from D6's claim
+(Lvl 5)  (Lvl 4)  (Lvl 3)  (Lvl 2)  (Lvl 1)
+```
+
+### Proximity Distribution Table
+
+| Level | Distance | Reward % | Min Stake Required |
+|-------|----------|----------|-------------------|
+| 1 | 1 position back | 5% | 1,000 LGM |
+| 2 | 2 positions back | 7% | 3,000 LGM |
+| 3 | 3 positions back | 8% | 5,000 LGM |
+| 4 | 4 positions back | 10% | 7,000 LGM |
+| 5 | 5 positions back | 12% | 9,000 LGM |
+| 6 | 6 positions back | 13% | 11,000 LGM |
+| 7 | 7 positions back | 15% | 13,000 LGM |
+| 8 | 8 positions back | 17% | 15,000 LGM |
+| **Total** | | **87%** | |
+
+### Eligibility Requirements
+
+To receive proximity rewards, uplines must:
+- Have minimum stake for their level
+- Have staked for at least 100 blocks (stake age)
+- Not be in unstaking status
+
+<Callout type="warn">
+If an upline is ineligible, their share goes to the validator instead.
+</Callout>
+
+### Example Calculation
+
+```
+Your Pending Reward: 100 LGM
+
+Proximity Distribution (87%):
+- Level 1 (5%):  5 LGM → Delegator at position -1
+- Level 2 (7%):  7 LGM → Delegator at position -2
+- Level 3 (8%):  8 LGM → Delegator at position -3
+- Level 4 (10%): 10 LGM → Delegator at position -4
+- Level 5 (12%): 12 LGM → Delegator at position -5
+- Level 6 (13%): 13 LGM → Delegator at position -6
+- Level 7 (15%): 15 LGM → Delegator at position -7
+- Level 8 (17%): 17 LGM → Delegator at position -8
+
+Your Net (13%): 13 LGM
+After Tax (10%): ~11.7 LGM
+```
+
+## Delegator Operations
+
+### Add More Stake
+
+Top up your existing delegation:
+
+```solidity
+function addDelegatorStake(address vaAddr) external payable returns (bool);
+```
+
+```typescript
+await resonanceSystem.addDelegatorStake(validatorAddress, {
+    value: ethers.parseEther("500")  // Add 500 LGM
+});
+```
+
+<Callout type="info">
+Adding stake does NOT change your position in the proximity chain.
+</Callout>
+
+### Claim Rewards
+
+Claim your accumulated rewards:
+
+```solidity
+function claimDelegatorReward(address vaAddr) external returns (bool);
+```
+
+```typescript
+const tx = await resonanceSystem.claimDelegatorReward(validatorAddress);
+const receipt = await tx.wait();
+
+// Parse the event
+const event = receipt.logs.find(
+    log => log.topics[0] === resonanceSystem.interface.getEventTopic('DelegatorRewardClaimed')
+);
+console.log("Gross:", event.args.gross);
+console.log("Net:", event.args.net);
+console.log("Tax:", event.args.tax);
+```
+
+### Unstake
+
+Initiate the unstaking process:
+
+```solidity
+function unstakeDelegator(address vaAddr) external returns (bool);
+```
+
+```typescript
+await resonanceSystem.unstakeDelegator(validatorAddress);
+```
+
+<Callout type="warn">
+**Important**: Unstaking removes you from the proximity chain. You will lose your position and any pending proximity rewards from downstream delegators.
+</Callout>
+
+### Withdraw Stake
+
+After the 25,000 block lock period:
+
+```solidity
+function withdrawDelegatorStake(address vaAddr) external returns (bool);
+```
+
+```typescript
+await resonanceSystem.withdrawDelegatorStake(validatorAddress);
+```
+
+### Exit from Validator
+
+Remove yourself from the validator's whitelist:
+
+```solidity
+// On NFTPassport contract
+function exitFromValidator(address validator) external;
+```
+
+## View Functions
+
+### Get Delegator Info
+
+```solidity
+function getDelegatorInfo(address dcAddr, address vaAddr) external view returns (
+    DCStatus status,
+    uint256 stakeAmount,
+    uint256 pendingRewards,
+    uint256 joinedAt,
+    uint256 stakerIndex      // Your position in proximity chain
+);
+```
+
+### Get Estimated Rewards
+
+```solidity
+function getEstimatedDelegatorReward(address dcAddr, address vaAddr) external view returns (
+    uint256 pending,         // Gross pending rewards
+    uint256 afterProximity,  // After 87% proximity deduction (13%)
+    uint256 afterTax         // Final amount after tax
+);
+```
+
+### Check Whitelist Status
+
+```solidity
+// On NFTPassport contract
+function isWhitelisted(address delegator, address validator) external view returns (bool);
+```
+
+## Reward Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Epoch Reward Distribution                     │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Validator Share (based on total stake)                         │
+│         │                                                        │
+│         ▼                                                        │
+│  ┌──────────────┐                                               │
+│  │  Commission  │ ──────────────────────► Validator             │
+│  │    (5-10%)   │                                               │
+│  └──────────────┘                                               │
+│         │                                                        │
+│         ▼                                                        │
+│  ┌──────────────┐                                               │
+│  │  Delegator   │                                               │
+│  │    Pool      │                                               │
+│  └──────┬───────┘                                               │
+│         │                                                        │
+│    ┌────┴────┐                                                  │
+│    ▼         ▼                                                  │
+│ ┌──────┐ ┌──────────┐                                          │
+│ │ VA   │ │Delegators│                                          │
+│ │Self  │ │(by stake)│                                          │
+│ │Stake │ │          │                                          │
+│ └──────┘ └────┬─────┘                                          │
+│               │                                                  │
+│          On Claim                                               │
+│               │                                                  │
+│    ┌──────────┴──────────┐                                     │
+│    ▼                     ▼                                      │
+│ ┌──────────┐      ┌──────────┐                                 │
+│ │Proximity │      │ Claimer  │                                 │
+│ │  (87%)   │      │  (13%)   │                                 │
+│ └──────────┘      └────┬─────┘                                 │
+│                        │                                        │
+│                   ┌────┴────┐                                  │
+│                   ▼         ▼                                   │
+│              ┌──────┐  ┌──────┐                                │
+│              │ Tax  │  │ Net  │                                │
+│              │(10%) │  │(90%) │                                │
+│              └──────┘  └──────┘                                │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Choosing a Validator
+
+Consider these factors when selecting a validator:
+
+### Performance Metrics
+- **Uptime**: Higher uptime = more consistent rewards
+- **Commission**: Lower commission = higher delegator rewards
+- **Total Stake**: Larger stake = larger share of epoch rewards
+
+### Trust Factors
+- **Reputation**: Established validators with track record
+- **Communication**: Active community engagement
+- **Transparency**: Clear fee structure and policies
+
+### Proximity Position
+- **Early Position**: Stake early to receive proximity rewards from later delegators
+- **Stake Amount**: Higher stake qualifies for more proximity levels
+
+## Tax on Rewards
+
+All reward claims are subject to tax via the TaxManager:
+
+| Component | Rate | Recipient |
+|-----------|------|-----------|
+| Burn | ~9% | Burn Address |
+| Dev Fee | ~1% | Dev Treasury |
+| **Net to User** | **~90%** | Your Wallet |
+
+## Best Practices
+
+### Maximizing Rewards
+
+1. **Stake Early**: Get a lower position in the proximity chain
+2. **Stake More**: Qualify for higher proximity levels
+3. **Choose Wisely**: Select validators with low commission and high uptime
+4. **Compound**: Regularly claim and re-stake rewards
+
+### Risk Management
+
+1. **Diversify**: Stake with multiple validators
+2. **Monitor**: Track validator performance
+3. **Stay Informed**: Follow network updates
+4. **Plan Exits**: Account for lock periods
+
+## Related Topics
+
+<Cards>
+  <Card title="Validators" href="/docs/validators" />
+  <Card title="Proximity System" href="/docs/consensus/proximity" />
+  <Card title="Start Staking Guide" href="/docs/guides/start-staking" />
+  <Card title="Tax Manager" href="/docs/smart-contracts/tax-manager" />
+</Cards>

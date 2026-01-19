@@ -1,0 +1,403 @@
+---
+title: Start Staking
+description: Step-by-step guide to staking LGM as a delegator
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Steps, Step } from 'fumadocs-ui/components/steps';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Start Staking
+
+This guide walks you through staking your LGM tokens as a delegator to earn rewards.
+
+## Prerequisites
+
+Before starting, ensure you have:
+
+- **1,000+ LGM tokens** for minimum stake
+- **Web3 wallet** (MetaMask, WalletConnect, etc.)
+- **Referral key** or direct invite from a validator
+
+## Understanding Staking
+
+When you stake as a delegator:
+
+1. Your LGM is locked in the ResonanceSystem contract
+2. You earn rewards proportional to your stake
+3. Rewards are subject to proximity distribution (87% to uplines)
+4. You keep 13% of your rewards, minus 10% tax
+5. Unstaking requires a 25,000 block (~7 hour) lock period
+
+### Reward Calculation Example
+
+```
+Your Stake: 5,000 LGM
+Validator Total Stake: 100,000 LGM
+Epoch Reward to Validator: 100 LGM
+Your Share: 100 × (5,000 / 100,000) = 5 LGM
+
+After Proximity (13%): 0.65 LGM
+After Tax (90%): ~0.585 LGM per epoch
+
+Daily (~432 epochs): ~253 LGM
+Annual: ~92,000 LGM (~1,840% of stake)
+```
+
+<Callout type="info">
+Actual returns vary based on network conditions, validator performance, and your position in the proximity chain.
+</Callout>
+
+## Staking Process
+
+<Steps>
+<Step>
+### Connect Your Wallet
+
+1. Go to https://app.fene.network
+2. Click "Connect Wallet"
+3. Select your wallet (MetaMask, WalletConnect, etc.)
+4. Approve the connection
+
+**Add Living Mission Network:**
+```
+Network Name:     Living Mission
+RPC URL:          https://rpc.fene.network
+Chain ID:         5881
+Currency Symbol:  LGM
+Explorer:         https://explorer.fene.network
+```
+</Step>
+
+<Step>
+### Get Whitelisted
+
+Before staking, you need to be whitelisted by a validator.
+
+**Option A: Use Referral Key**
+
+If you have a referral key from a validator:
+
+1. Go to "Join Validator" page
+2. Enter the referral key
+3. Click "Use Key"
+4. Confirm transaction
+
+```typescript
+// Programmatically
+const NFT_PASSPORT = "0x0000000000000000000000000000000000001001";
+const passport = new ethers.Contract(NFT_PASSPORT, ABI, signer);
+
+const referralKey = "0x..."; // From validator
+await passport.useReferralKey(referralKey);
+```
+
+**Option B: Request Direct Invite**
+
+Contact a validator and ask them to whitelist your address directly.
+
+**Option C: Use Promo Code**
+
+Some validators offer public promo codes:
+1. Go to validator's page
+2. Enter promo code
+3. Click "Apply"
+</Step>
+
+<Step>
+### Choose a Validator
+
+Select a validator to stake with. Consider:
+
+| Factor | What to Look For |
+|--------|------------------|
+| **Commission** | Lower = more rewards for you (5-10%) |
+| **Total Stake** | Higher = larger share of epoch rewards |
+| **Uptime** | Higher = more consistent rewards |
+| **Delegators** | Your position affects proximity rewards |
+| **Reputation** | Established validators are safer |
+
+**View Validators:**
+```typescript
+const RESONANCE_SYSTEM = "0x0000000000000000000000000000000000001000";
+const contract = new ethers.Contract(RESONANCE_SYSTEM, ABI, provider);
+
+const validators = await contract.getActiveValidators();
+for (const va of validators) {
+  const info = await contract.getValidatorInfo(va);
+  console.log(va, {
+    status: info.status,
+    totalStake: ethers.formatEther(info.totalStake),
+    commission: info.commissionRate / 100 + "%",
+    delegators: info.stakerCount.toString()
+  });
+}
+```
+</Step>
+
+<Step>
+### Stake Your LGM
+
+Once whitelisted, stake your tokens:
+
+**Using the DApp:**
+1. Navigate to the validator's page
+2. Enter stake amount (minimum 1,000 LGM)
+3. Click "Stake"
+4. Confirm transaction in wallet
+
+**Using Contract:**
+```typescript
+const validatorAddress = "0x...";
+
+const tx = await contract.stakeToValidator(validatorAddress, {
+  value: ethers.parseEther("1000") // 1,000 LGM
+});
+await tx.wait();
+
+console.log("Successfully staked!");
+```
+
+<Callout type="info">
+Your position in the proximity chain is determined by when you stake. Earlier stakers receive proximity rewards from later stakers.
+</Callout>
+</Step>
+
+<Step>
+### Monitor Your Stake
+
+Track your staking position and rewards:
+
+**View Your Info:**
+```typescript
+const [status, stakeAmount, pendingRewards, joinedAt, stakerIndex] =
+  await contract.getDelegatorInfo(myAddress, validatorAddress);
+
+console.log({
+  status: ["NOT_EXIST", "ACTIVE", "UNSTAKING"][status],
+  stake: ethers.formatEther(stakeAmount),
+  pending: ethers.formatEther(pendingRewards),
+  position: stakerIndex.toString()
+});
+```
+
+**Estimate Rewards:**
+```typescript
+const [pending, afterProximity, afterTax] =
+  await contract.getEstimatedDelegatorReward(myAddress, validatorAddress);
+
+console.log({
+  grossPending: ethers.formatEther(pending),
+  afterProximity: ethers.formatEther(afterProximity), // 13%
+  netReceive: ethers.formatEther(afterTax)            // After 10% tax
+});
+```
+</Step>
+</Steps>
+
+## Managing Your Stake
+
+### Claim Rewards
+
+Claim your accumulated rewards:
+
+```typescript
+const tx = await contract.claimDelegatorReward(validatorAddress);
+const receipt = await tx.wait();
+
+// Parse event for details
+const event = receipt.logs.find(
+  log => log.topics[0] === contract.interface.getEventTopic('DelegatorRewardClaimed')
+);
+const decoded = contract.interface.parseLog(event);
+console.log({
+  gross: ethers.formatEther(decoded.args.gross),
+  net: ethers.formatEther(decoded.args.net),
+  tax: ethers.formatEther(decoded.args.tax)
+});
+```
+
+<Callout type="warn">
+When you claim, 87% of your rewards are distributed to the 8 delegators who staked before you (proximity rewards).
+</Callout>
+
+### Add More Stake
+
+Top up your existing stake:
+
+```typescript
+const tx = await contract.addDelegatorStake(validatorAddress, {
+  value: ethers.parseEther("500") // Add 500 LGM
+});
+await tx.wait();
+```
+
+<Callout type="info">
+Adding stake does NOT change your position in the proximity chain.
+</Callout>
+
+### Unstake
+
+To withdraw your stake:
+
+```typescript
+// Step 1: Initiate unstake
+const tx1 = await contract.unstakeDelegator(validatorAddress);
+await tx1.wait();
+console.log("Unstake initiated. Lock period: 25,000 blocks (~7 hours)");
+
+// Step 2: Wait for lock period...
+
+// Step 3: Withdraw
+const tx2 = await contract.withdrawDelegatorStake(validatorAddress);
+await tx2.wait();
+console.log("Stake withdrawn!");
+```
+
+<Callout type="warn">
+**Warning**: Unstaking removes you from the proximity chain. You will:
+- Stop earning rewards immediately
+- Lose your position (can't get it back)
+- Miss proximity rewards from downstream delegators
+</Callout>
+
+### Exit from Validator
+
+Remove yourself from the whitelist after unstaking:
+
+```typescript
+const passport = new ethers.Contract(NFT_PASSPORT, ABI, signer);
+await passport.exitFromValidator(validatorAddress);
+```
+
+## Proximity Rewards Explained
+
+The proximity system rewards early stakers:
+
+```
+Staking Order:  D1 → D2 → D3 → D4 → D5 → D6 → D7 → D8 → D9 (you)
+
+When you claim 100 LGM:
+├── D8 receives: 5 LGM  (Level 1: 5%)
+├── D7 receives: 7 LGM  (Level 2: 7%)
+├── D6 receives: 8 LGM  (Level 3: 8%)
+├── D5 receives: 10 LGM (Level 4: 10%)
+├── D4 receives: 12 LGM (Level 5: 12%)
+├── D3 receives: 13 LGM (Level 6: 13%)
+├── D2 receives: 15 LGM (Level 7: 15%)
+├── D1 receives: 17 LGM (Level 8: 17%)
+└── You receive: 13 LGM (13%)
+    └── After tax: ~11.7 LGM
+```
+
+### Maximizing Proximity Rewards
+
+To receive proximity rewards from others:
+
+1. **Stake Early**: Lower position = receive from more people
+2. **Stake More**: Meet minimum for each level:
+   - Level 1: 1,000 LGM
+   - Level 2: 3,000 LGM
+   - Level 3: 5,000 LGM
+   - Level 4: 7,000 LGM
+   - Level 5: 9,000 LGM
+   - Level 6: 11,000 LGM
+   - Level 7: 13,000 LGM
+   - Level 8: 15,000 LGM
+
+3. **Stay Active**: Don't unstake (removes you from chain)
+4. **Stake Age**: Must be staked for 100+ blocks
+
+## Staking Strategies
+
+### Conservative
+
+- Stake with established validators
+- Diversify across 3-5 validators
+- Claim and compound weekly
+
+### Growth-Focused
+
+- Stake early with new validators
+- Higher stake to qualify for all proximity levels
+- Claim frequently to compound
+
+### Passive Income
+
+- Set and forget with top validators
+- Claim monthly
+- Reinvest a portion
+
+## Tax Implications
+
+All reward claims are taxed:
+
+| Component | Rate | Destination |
+|-----------|------|-------------|
+| Burn | 9% | Burned (deflationary) |
+| Dev Fee | 1% | Development treasury |
+| **Net** | **90%** | Your wallet |
+
+## Troubleshooting
+
+### "Not Whitelisted" Error
+
+You need to be whitelisted before staking:
+1. Get a referral key from the validator
+2. Use the key via NFTPassport contract
+3. Or ask validator for direct invite
+
+### Transaction Failing
+
+- Ensure you have enough LGM for stake + gas
+- Check you're on the correct network (Chain ID: 5881)
+- Verify the validator is active
+
+### Rewards Not Showing
+
+- Rewards accumulate each epoch (200 blocks)
+- Check `getEstimatedDelegatorReward()` for pending
+- Ensure validator is actively producing blocks
+
+### Can't Withdraw
+
+- Must wait 25,000 blocks after unstaking
+- Check `getDelegatorInfo()` for `unstakeBlock`
+- Calculate: `currentBlock - unstakeBlock >= 25000`
+
+## FAQ
+
+**Q: What's the minimum stake?**
+A: 1,000 LGM
+
+**Q: How often should I claim?**
+A: Depends on gas costs vs rewards. Generally weekly or when rewards exceed gas significantly.
+
+**Q: Can I stake with multiple validators?**
+A: Yes! You can stake with as many validators as you're whitelisted with.
+
+**Q: What happens if my validator unstakes?**
+A: You'll stop earning rewards. Consider moving to another validator.
+
+**Q: Is my stake safe?**
+A: Your stake is held in the audited ResonanceSystem contract. Only you can withdraw it.
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Understand Proximity"
+    description="Deep dive into the proximity reward system"
+    href="/docs/delegators#proximity-reward-system"
+  />
+  <Card
+    title="View Validators"
+    description="Browse and compare validators"
+    href="https://app.fene.network/validators"
+  />
+  <Card
+    title="Join Discord"
+    description="Get help from the community"
+    href="https://discord.gg/livingmission"
+  />
+</Cards>

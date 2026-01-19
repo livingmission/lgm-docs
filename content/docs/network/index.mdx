@@ -1,0 +1,297 @@
+---
+title: Network Information
+description: Living Mission network details, configuration, and resources
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+import { Cards, Card } from 'fumadocs-ui/components/card';
+
+# Network Information
+
+Complete information about the Living Mission network configuration, endpoints, and resources.
+
+## Network Overview
+
+| Property | Mainnet | Testnet |
+|----------|---------|---------|
+| **Network Name** | Living Mission | Living Mission Testnet |
+| **Chain ID** | 5881 | 5882 |
+| **Currency Symbol** | LGM | tLGM |
+| **Block Time** | ~1 second | ~1 second |
+| **Consensus** | Resonance (DPoS) | Resonance (DPoS) |
+
+## RPC Endpoints
+
+### Mainnet
+
+```
+HTTPS RPC:    https://rpc.fene.network
+WebSocket:    wss://rpc.fene.network/ws
+```
+
+### Testnet
+
+```
+HTTPS RPC:    https://rpc-testnet.fene.network
+WebSocket:    wss://rpc-testnet.fene.network/ws
+```
+
+## Block Explorers
+
+| Network | Explorer URL |
+|---------|--------------|
+| Mainnet | https://explorer.fene.network |
+| Testnet | https://explorer-testnet.fene.network |
+
+## API Endpoints
+
+| Service | Mainnet | Testnet |
+|---------|---------|---------|
+| REST API | https://api.fene.network | https://api-testnet.fene.network |
+| GraphQL | https://graphql.fene.network | https://graphql-testnet.fene.network |
+
+## Add to Wallet
+
+### MetaMask Configuration
+
+**Mainnet:**
+```
+Network Name:     Living Mission
+RPC URL:          https://rpc.fene.network
+Chain ID:         5881
+Currency Symbol:  LGM
+Block Explorer:   https://explorer.fene.network
+```
+
+**Testnet:**
+```
+Network Name:     Living Mission Testnet
+RPC URL:          https://rpc-testnet.fene.network
+Chain ID:         5882
+Currency Symbol:  tLGM
+Block Explorer:   https://explorer-testnet.fene.network
+```
+
+### Programmatic Addition
+
+```typescript
+await window.ethereum.request({
+  method: 'wallet_addEthereumChain',
+  params: [{
+    chainId: '0x16F9', // 5881 in hex
+    chainName: 'Living Mission',
+    nativeCurrency: {
+      name: 'Living Mission',
+      symbol: 'LGM',
+      decimals: 18
+    },
+    rpcUrls: ['https://rpc.fene.network'],
+    blockExplorerUrls: ['https://explorer.fene.network']
+  }]
+});
+```
+
+## System Contract Addresses
+
+<Callout type="info">
+System contracts are deployed at genesis with deterministic addresses.
+</Callout>
+
+| Contract | Address |
+|----------|---------|
+| **ResonanceSystem** | `0x0000000000000000000000000000000000001000` |
+| **NFTPassport** | `0x0000000000000000000000000000000000001001` |
+| **TaxManager** | `0x0000000000000000000000000000000000001002` |
+| **RewardManager** | `0x0000000000000000000000000000000000001003` |
+| **FeeRecorder** | `0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF` |
+| **DAO Treasury** | `0xAfe553BF57DAb198fE672153446CA520a29E1E80` |
+| **Burn Address** | `0x000000000000000000000000000000000000dEaD` |
+
+## Network Parameters
+
+### Consensus Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Max Validators | 101 | Maximum active validators |
+| Epoch Length | 200 blocks | ~3.3 minutes |
+| Block Time | 1 second | Target block production time |
+| Block Reward | 10 LGM | Per epoch (configurable) |
+
+### Staking Parameters
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| Min Validator Stake | 10,000 LGM | Minimum to become validator |
+| Min Delegator Stake | 1,000 LGM | Minimum delegation |
+| Validator Lock | 50,000 blocks | ~14 hours |
+| Delegator Lock | 25,000 blocks | ~7 hours |
+| Default Commission | 5% | Validator commission |
+| Max Commission | 10% | Maximum allowed |
+
+### Proximity Parameters
+
+| Level | Reward % | Min Stake |
+|-------|----------|-----------|
+| 1 | 5% | 1,000 LGM |
+| 2 | 7% | 3,000 LGM |
+| 3 | 8% | 5,000 LGM |
+| 4 | 10% | 7,000 LGM |
+| 5 | 12% | 9,000 LGM |
+| 6 | 13% | 11,000 LGM |
+| 7 | 15% | 13,000 LGM |
+| 8 | 17% | 15,000 LGM |
+| **Total** | **87%** | |
+
+### Tax Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| Tax Rate | 10% | Total tax on rewards |
+| Burn Rate | 9% | Portion burned |
+| Dev Fee | 1% | Portion to treasury |
+
+## Genesis Configuration
+
+```json
+{
+  "config": {
+    "chainId": 5881,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
+    "eip155Block": 0,
+    "eip158Block": 0,
+    "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
+    "petersburgBlock": 0,
+    "istanbulBlock": 0,
+    "berlinBlock": 0,
+    "londonBlock": 0,
+    "resonance": {
+      "period": 1,
+      "epoch": 200
+    }
+  }
+}
+```
+
+## Token Economics
+
+### LGM Token
+
+| Property | Value |
+|----------|-------|
+| Name | Living Mission |
+| Symbol | LGM |
+| Decimals | 18 |
+| Type | Native Gas Token |
+
+### Supply Dynamics
+
+- **Block Rewards**: New LGM minted each epoch
+- **Burn Mechanism**: 9% of claimed rewards burned
+- **Deflationary Pressure**: Burn rate can exceed emission
+
+### Reward Distribution
+
+```
+Epoch Reward (10 LGM)
+        │
+        ▼
+┌───────────────────┐
+│  Active Validators │
+│  (by total stake)  │
+└─────────┬─────────┘
+          │
+    ┌─────┴─────┐
+    ▼           ▼
+┌───────┐  ┌────────────┐
+│Commis-│  │ Delegator  │
+│ sion  │  │   Pool     │
+│(5-10%)│  │            │
+└───────┘  └─────┬──────┘
+                 │
+           On Claim
+                 │
+    ┌────────────┼────────────┐
+    ▼            ▼            ▼
+┌───────┐  ┌──────────┐  ┌───────┐
+│Proxim-│  │ Claimer  │  │  Tax  │
+│  ity  │  │  (13%)   │  │ (10%) │
+│ (87%) │  │          │  │       │
+└───────┘  └──────────┘  └───┬───┘
+                             │
+                       ┌─────┴─────┐
+                       ▼           ▼
+                   ┌───────┐  ┌───────┐
+                   │ Burn  │  │  Dev  │
+                   │ (9%)  │  │ (1%)  │
+                   └───────┘  └───────┘
+```
+
+## Infrastructure
+
+### Node Types
+
+| Type | Description | Requirements |
+|------|-------------|--------------|
+| **Validator** | Produces blocks, earns rewards | 10,000 LGM stake, high uptime |
+| **RPC Node** | Serves API requests | No stake required |
+| **Archive Node** | Full historical data | Large storage |
+| **Boot Node** | P2P network discovery | Static IP |
+
+### Hardware Requirements
+
+**Validator Node:**
+- CPU: 8+ cores
+- RAM: 32GB+
+- Storage: 500GB+ NVMe SSD
+- Network: 100Mbps+, static IP
+- Uptime: 99.9%+
+
+**RPC Node:**
+- CPU: 4+ cores
+- RAM: 16GB+
+- Storage: 500GB+ SSD
+- Network: 100Mbps+
+
+## Resources
+
+<Cards>
+  <Card
+    title="GitHub"
+    description="Source code and development"
+    href="https://github.com/fenelabs"
+  />
+  <Card
+    title="Documentation"
+    description="Technical documentation"
+    href="https://docs.fene.network"
+  />
+  <Card
+    title="Block Explorer"
+    description="View transactions and blocks"
+    href="https://explorer.fene.network"
+  />
+  <Card
+    title="Staking DApp"
+    description="Stake and manage validators"
+    href="https://app.fene.network"
+  />
+</Cards>
+
+## Faucet (Testnet)
+
+Get testnet tokens for development:
+
+```
+Faucet URL: https://faucet.fene.network
+Limit: 100 tLGM per day per address
+```
+
+## Support
+
+- **Discord**: [Join our community](https://discord.gg/livingmission)
+- **Twitter**: [@LivingMission](https://twitter.com/livingmission)
+- **Email**: support@fene.network
+- **GitHub Issues**: [Report bugs](https://github.com/fenelabs/issues)

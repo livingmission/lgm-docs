@@ -1,0 +1,178 @@
+---
+title: Introduction
+description: Introduction to Living Mission blockchain platform
+---
+
+import { Cards, Card } from 'fumadocs-ui/components/card';
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# Introduction to Living Mission
+
+Living Mission (LGM) is a next-generation **Delegated Proof-of-Stake (DPoS)** blockchain platform designed for high performance, security, and decentralization.
+
+## What is Living Mission?
+
+Living Mission is a Layer 1 blockchain that combines:
+
+- **Fast Transactions**: ~1 second block times
+- **Low Fees**: Efficient consensus minimizes costs
+- **Decentralization**: Up to 101 validators
+- **Staking Rewards**: Earn by securing the network
+- **EVM Compatibility**: Deploy Solidity smart contracts
+
+## Why Living Mission?
+
+### For Users
+
+- **Stake and Earn**: Delegate your LGM to validators and earn rewards
+- **Low Barrier**: Start staking with just 1,000 LGM
+- **Transparent**: All operations on-chain and verifiable
+- **Secure**: Battle-tested smart contracts
+
+### For Validators
+
+- **Earn Rewards**: Block rewards + commission from delegators
+- **Build Community**: Grow your delegation through referrals
+- **Governance**: Participate in network decisions
+- **Professional**: Enterprise-grade infrastructure
+
+### For Developers
+
+- **EVM Compatible**: Use familiar tools (Solidity, ethers.js, Hardhat)
+- **Fast Finality**: Quick transaction confirmations
+- **Rich APIs**: Comprehensive SDK and REST API
+- **Documentation**: Extensive guides and references
+
+## Key Innovations
+
+### Resonance Consensus
+
+Our custom DPoS consensus engine provides:
+
+- **101 Validators**: More decentralized than most DPoS chains
+- **1 Second Blocks**: Fast transaction processing
+- **Epoch-Based Rewards**: Fair distribution every 200 blocks
+- **System Transactions**: Automated reward distribution
+
+### Proximity Rewards
+
+A unique 8-level reward distribution system:
+
+- Early stakers receive rewards from later stakers
+- Incentivizes early participation
+- Creates network effects for validators
+- 87% distributed to uplines, 13% to claimer
+
+### NFT Passport System
+
+Controlled delegation through whitelisting:
+
+- Validators control who can delegate
+- Referral keys for community growth
+- Anti-spam protection
+- Relationship tracking
+
+### Deflationary Tokenomics
+
+Built-in burn mechanism:
+
+- 10% tax on reward claims
+- 9% burned, 1% to development
+- Reduces supply over time
+- Sustainable economics
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Living Mission Stack                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                   Applications                       │   │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌────────┐ │   │
+│  │  │ Staking │  │  DeFi   │  │  NFTs   │  │  DAOs  │ │   │
+│  │  │  DApp   │  │  Apps   │  │Markets  │  │        │ │   │
+│  │  └─────────┘  └─────────┘  └─────────┘  └────────┘ │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                   SDK & API Layer                    │   │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │   │
+│  │  │  Fene SDK   │  │  REST API   │  │   GraphQL   │ │   │
+│  │  │ (TypeScript)│  │    (Go)     │  │             │ │   │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘ │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                  Smart Contracts                     │   │
+│  │  ┌───────────┐ ┌───────────┐ ┌───────────────────┐ │   │
+│  │  │ Resonance │ │    NFT    │ │       Tax         │ │   │
+│  │  │  System   │ │ Passport  │ │     Manager       │ │   │
+│  │  └───────────┘ └───────────┘ └───────────────────┘ │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                  Consensus Layer                     │   │
+│  │  ┌─────────────────────────────────────────────┐   │   │
+│  │  │           Resonance (DPoS Engine)            │   │   │
+│  │  │  • 101 Validators  • 1s Blocks  • Epochs    │   │   │
+│  │  └─────────────────────────────────────────────┘   │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                           │                                  │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                   Network Layer                      │   │
+│  │  ┌─────────────────────────────────────────────┐   │   │
+│  │  │        go-ethereum (geth) Foundation         │   │   │
+│  │  │  • P2P Network  • EVM  • State Management   │   │   │
+│  │  └─────────────────────────────────────────────┘   │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Comparison
+
+| Feature | Living Mission | Ethereum | BNB Chain | Cosmos |
+|---------|---------------|----------|-----------|--------|
+| Consensus | DPoS (Resonance) | PoS | DPoS (Parlia) | Tendermint |
+| Validators | 101 | ~500K | 21 | Varies |
+| Block Time | 1s | 12s | 3s | 6s |
+| Finality | ~200 blocks | ~15 min | ~45 blocks | Instant |
+| Min Stake (Validator) | 10,000 LGM | 32 ETH | 10,000 BNB | Varies |
+| Min Stake (Delegator) | 1,000 LGM | Any | Any | Any |
+| EVM Compatible | ✅ | ✅ | ✅ | ❌ |
+
+## Getting Started
+
+<Cards>
+  <Card
+    title="Start Staking"
+    description="Stake your LGM and earn rewards"
+    href="/docs/guides/start-staking"
+  />
+  <Card
+    title="Become a Validator"
+    description="Run a validator node and secure the network"
+    href="/docs/guides/become-validator"
+  />
+  <Card
+    title="Build on LGM"
+    description="Deploy smart contracts and build dApps"
+    href="/docs/sdk"
+  />
+  <Card
+    title="Explore Network"
+    description="View network stats and configuration"
+    href="/docs/network"
+  />
+</Cards>
+
+## Quick Links
+
+- **Website**: [livingmission.io](https://livingmission.io)
+- **Staking App**: [app.fene.network](https://app.fene.network)
+- **Explorer**: [explorer.fene.network](https://explorer.fene.network)
+- **GitHub**: [github.com/fenelabs](https://github.com/fenelabs)
+- **Discord**: [Join Community](https://discord.gg/livingmission)
+- **Twitter**: [@LivingMission](https://twitter.com/livingmission)

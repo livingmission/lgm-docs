@@ -1,0 +1,292 @@
+---
+title: TaxManager Contract
+description: Reward taxation, burn mechanism, and exemption management
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# TaxManager Contract
+
+The **TaxManager** contract handles tax computation for all reward claims in the Living Mission network. It implements burn mechanisms, developer fees, and flexible tax policies.
+
+**Address**: `0x0000000000000000000000000000000000001002`
+
+## Overview
+
+TaxManager provides:
+- **Tax Computation**: Calculate tax on reward claims
+- **Burn Mechanism**: Portion of tax is burned (deflationary)
+- **Dev Fee**: Portion goes to development treasury
+- **Whitelist/Blacklist**: Exemptions and penalties
+- **Tiered Tax**: Optional progressive tax rates
+
+## Default Configuration
+
+| Parameter | Default Value | Description |
+|-----------|---------------|-------------|
+| `burnPercent` | 1000 (10%) | Total tax percentage |
+| `devSplitPercent` | 100 (1%) | Dev share of tax |
+| `burnAddress` | `0x...dEaD` | Burn address |
+| `taxEnabled` | true | Tax collection active |
+
+### Tax Breakdown Example
+
+For a 100 LGM reward claim:
+```
+Total Tax (10%):     10 LGM
+├── Dev Share (1%):   0.1 LGM → Dev Treasury
+└── Burn (9.9%):      9.9 LGM → Burn Address
+
+Net to User:         90 LGM
+```
+
+## Core Functions
+
+### computeTax
+
+Calculate tax breakdown for a reward claim. Called by ResonanceSystem.
+
+```solidity
+function computeTax(
+    address user,
+    uint256 totalReward
+) external view returns (
+    uint256 userReceive,  // Amount after tax
+    uint256 devShare,     // To dev address
+    uint256 burnShare     // To burn address
+);
+```
+
+**Logic Flow:**
+1. If not initialized or paused → return full amount (no tax)
+2. If user is whitelisted → return full amount (no tax)
+3. If user is blacklisted → return 0 (100% burned)
+4. If tax disabled → return full amount
+5. Otherwise → calculate based on burnPercent and devSplitPercent
+
+### previewTax
+
+Preview tax for frontend display (doesn't show dev share for privacy).
+
+```solidity
+function previewTax(
+    address user,
+    uint256 totalReward
+) external view returns (
+    uint256 userReceive,
+    uint256 burnShare
+);
+```
+
+## Admin Functions
+
+### Tax Configuration
+
+```solidity
+// Set burn percentage (0-100%)
+function setBurnPercent(uint16 _burnPercent) external;
+
+// Set dev split (0-5% of tax)
+function setDevSplitPercent(uint16 _splitPercent) external;
+
+// Enable/disable tax collection
+function setTaxEnabled(bool _enabled) external;
+
+// Update burn address
+function setBurnAddress(address _burnAddress) external;
+
+// Update dev address
+function setDevAddress(address _devAddress) external;
+```
+
+### Access Control
+
+```solidity
+// Blacklist: 100% tax (all burned)
+function setBlacklisted(address user, bool _blacklisted) external;
+function batchSetBlacklisted(address[] calldata users, bool _blacklisted) external;
+
+// Whitelist: 0% tax
+function setWhitelisted(address user, bool _whitelisted) external;
+function batchSetWhitelisted(address[] calldata users, bool _whitelisted) external;
+```
+
+### Tiered Tax (Optional)
+
+```solidity
+// Enable tiered tax
+function setTieredTaxEnabled(bool _enabled) external;
+
+// Add tax tier
+function addTaxTier(uint256 threshold, uint16 _burnPercent) external;
+
+// Remove tax tier
+function removeTaxTier(uint256 index) external;
+
+// Clear all tiers
+function clearTaxTiers() external;
+```
+
+**Tiered Tax Example:**
+```typescript
+// Higher rewards = higher tax
+await taxManager.addTaxTier(ethers.parseEther("1000"), 1000);   // 10% for < 1000
+await taxManager.addTaxTier(ethers.parseEther("10000"), 1200);  // 12% for < 10000
+await taxManager.addTaxTier(ethers.parseEther("100000"), 1500); // 15% for >= 10000
+
+await taxManager.setTieredTaxEnabled(true);
+```
+
+### Emergency Controls
+
+```solidity
+function pause() external;    // Disable tax (returns full amount)
+function unpause() external;  // Re-enable tax
+function changeAdmin(address newAdmin) external;
+```
+
+## View Functions
+
+### getConfig
+
+Get all configuration values.
+
+```solidity
+function getConfig() external view returns (
+    address _burnAddress,
+    address _devAddress,
+    bool _taxEnabled,
+    uint16 _burnPercent,
+    uint16 _devSplitPercent,
+    bool _tieredTaxEnabled
+);
+```
+
+### getTaxTiers
+
+Get all tax tiers.
+
+```solidity
+function getTaxTiers() external view returns (TaxTier[] memory);
+```
+
+### Status Checks
+
+```solidity
+function isBlacklisted(address user) external view returns (bool);
+function isWhitelisted(address user) external view returns (bool);
+function getTaxRate() external view returns (uint256);
+function isTaxExempt(address account) external view returns (bool);
+```
+
+## Events
+
+```solidity
+event TaxApplied(
+    address indexed user,
+    uint256 totalReward,
+    uint256 userReceive,
+    uint256 burnShare,
+    uint256 devShare,
+    uint16 burnPercent,
+    uint16 splitPercent
+);
+
+event TaxConfigUpdated(uint16 burnPercent, uint16 devSplitPercent);
+event TaxEnabledChanged(bool enabled);
+event BurnAddressUpdated(address indexed newBurnAddress);
+event DevAddressUpdated(address indexed newDevAddress);
+event UserBlacklistUpdated(address indexed user, bool blacklisted);
+event UserWhitelistUpdated(address indexed user, bool whitelisted);
+event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
+event Paused();
+event Unpaused();
+event TieredTaxEnabled(bool enabled);
+event TaxTierAdded(uint256 threshold, uint16 burnPercent);
+event TaxTierRemoved(uint256 index);
+```
+
+## Integration with ResonanceSystem
+
+TaxManager is called during reward claims:
+
+```solidity
+// In ResonanceSystem._transferWithTax()
+function _transferWithTax(
+    address payable recipient,
+    uint256 amount
+) internal returns (uint256 net, uint256 tax) {
+    ITaxManager taxManager = ITaxManager(TAX_MANAGER);
+
+    (uint256 userReceive, uint256 devShare, uint256 burnShare) =
+        taxManager.computeTax(recipient, amount);
+
+    if (userReceive > 0) recipient.transfer(userReceive);
+    if (devShare > 0) payable(taxManager.devAddress()).transfer(devShare);
+    if (burnShare > 0) payable(taxManager.burnAddress()).transfer(burnShare);
+
+    net = userReceive;
+    tax = devShare + burnShare;
+}
+```
+
+## Usage Examples
+
+### Preview Tax Before Claiming
+
+```typescript
+const taxManager = new ethers.Contract(
+    "0x0000000000000000000000000000000000001002",
+    TAX_MANAGER_ABI,
+    provider
+);
+
+const rewardAmount = ethers.parseEther("100");
+const [userReceive, burnShare] = await taxManager.previewTax(
+    userAddress,
+    rewardAmount
+);
+
+console.log(`Reward: ${ethers.formatEther(rewardAmount)} LGM`);
+console.log(`You receive: ${ethers.formatEther(userReceive)} LGM`);
+console.log(`Burned: ${ethers.formatEther(burnShare)} LGM`);
+```
+
+### Check Tax Status
+
+```typescript
+const config = await taxManager.getConfig();
+console.log("Tax enabled:", config._taxEnabled);
+console.log("Burn %:", config._burnPercent / 100, "%");
+console.log("Dev split:", config._devSplitPercent / 100, "%");
+
+const isExempt = await taxManager.isTaxExempt(userAddress);
+console.log("User exempt:", isExempt);
+```
+
+### Admin: Configure Tax
+
+```typescript
+// Reduce tax to 5%
+await taxManager.setBurnPercent(500);
+
+// Whitelist a partner
+await taxManager.setWhitelisted(partnerAddress, true);
+
+// Blacklist bad actor
+await taxManager.setBlacklisted(badActorAddress, true);
+```
+
+## Tax Scenarios
+
+| Scenario | Tax Rate | Result |
+|----------|----------|--------|
+| Normal user | 10% | 90% to user, 9% burned, 1% to dev |
+| Whitelisted | 0% | 100% to user |
+| Blacklisted | 100% | 0% to user, 100% burned |
+| Tax disabled | 0% | 100% to user |
+| Contract paused | 0% | 100% to user |
+
+<Callout type="info">
+The tax system is designed to be deflationary, reducing total supply over time through the burn mechanism.
+</Callout>

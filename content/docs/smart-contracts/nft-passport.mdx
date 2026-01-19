@@ -1,0 +1,425 @@
+---
+title: NFTPassport Contract
+description: Whitelist and referral system for delegator onboarding
+---
+
+import { Callout } from 'fumadocs-ui/components/callout';
+
+# NFTPassport Contract
+
+The **NFTPassport** contract manages the whitelist and referral system that controls which delegators can stake with which validators.
+
+**Address**: `0x0000000000000000000000000000000000001001`
+
+## Overview
+
+NFTPassport provides:
+- **Whitelist Management**: Validators control who can delegate to them
+- **Referral Keys**: One-time or multi-use invite codes
+- **Direct Invites**: Validators can directly whitelist addresses
+- **Self-Exit**: Delegators can remove themselves from whitelists
+
+<Callout type="info">
+A delegator must be whitelisted by a validator before they can stake with them via ResonanceSystem.
+</Callout>
+
+## Data Structures
+
+### Referral Key
+
+```solidity
+struct ReferralKey {
+    address validator;    // VA who created this key
+    bool isActive;        // Key still valid
+    bool isMultiUse;      // Can be used multiple times
+    uint256 usageCount;   // How many times used
+    uint256 maxUsage;     // Max usage (0 = unlimited for multi-use)
+    uint256 createdAt;    // Block number when created
+    uint256 expiresAt;    // Block number when expires (0 = never)
+}
+```
+
+## Validator Functions
+
+### createReferralKey
+
+Create a one-time use referral key.
+
+```solidity
+function createReferralKey(bytes32 key) external;
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | bytes32 | Unique key hash (generate off-chain) |
+
+**Example:**
+```typescript
+// Generate unique key
+const key = ethers.keccak256(ethers.toUtf8Bytes("my-secret-code-123"));
+
+// Create the key
+await nftPassport.createReferralKey(key);
+```
+
+### createReferralKeyWithExpiry
+
+Create a one-time key with expiration.
+
+```solidity
+function createReferralKeyWithExpiry(
+    bytes32 key,
+    uint256 expiresInBlocks
+) external;
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | bytes32 | Unique key hash |
+| `expiresInBlocks` | uint256 | Blocks until expiration |
+
+### createMultiUseKey
+
+Create a reusable referral code (like promo codes).
+
+```solidity
+function createMultiUseKey(
+    bytes32 key,
+    uint256 maxUsage,
+    uint256 expiresInBlocks
+) external;
+```
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | bytes32 | Unique key hash |
+| `maxUsage` | uint256 | Max uses (0 = unlimited) |
+| `expiresInBlocks` | uint256 | Blocks until expiration (0 = never) |
+
+**Example:**
+```typescript
+// Create a promo code usable 100 times, expires in ~1 day
+const promoKey = ethers.keccak256(ethers.toUtf8Bytes("LAUNCH2024"));
+
+await nftPassport.createMultiUseKey(
+    promoKey,
+    100,      // max 100 uses
+    86400     // ~1 day at 1s blocks
+);
+```
+
+### revokeReferralKey
+
+Disable a referral key.
+
+```solidity
+function revokeReferralKey(bytes32 key) external;
+```
+
+### directInvite
+
+Directly whitelist a delegator address.
+
+```solidity
+function directInvite(address delegator) external;
+```
+
+**Example:**
+```typescript
+await nftPassport.directInvite("0xDelegatorAddress");
+```
+
+### batchDirectInvite
+
+Whitelist multiple addresses at once.
+
+```solidity
+function batchDirectInvite(address[] calldata delegators) external;
+```
+
+**Example:**
+```typescript
+await nftPassport.batchDirectInvite([
+    "0xDelegator1",
+    "0xDelegator2",
+    "0xDelegator3"
+]);
+```
+
+### revokeWhitelist
+
+Remove a delegator from whitelist.
+
+```solidity
+function revokeWhitelist(address delegator) external;
+```
+
+## Delegator Functions
+
+### useReferralKey
+
+Use a referral key to get whitelisted.
+
+```solidity
+function useReferralKey(bytes32 key) external;
+```
+
+**Example:**
+```typescript
+// Key provided by validator
+const referralKey = "0x...";
+
+await nftPassport.useReferralKey(referralKey);
+
+// Now can stake with the validator
+await resonanceSystem.stakeToValidator(validatorAddress, {
+    value: ethers.parseEther("1000")
+});
+```
+
+### exitFromValidator
+
+Remove yourself from a validator's whitelist.
+
+```solidity
+function exitFromValidator(address validator) external;
+```
+
+<Callout type="warn">
+You should unstake from ResonanceSystem first before calling this.
+</Callout>
+
+## View Functions
+
+### isWhitelisted
+
+Check if a delegator can stake with a validator.
+
+```solidity
+function isWhitelisted(
+    address delegator,
+    address validator
+) external view returns (bool);
+```
+
+This is called by ResonanceSystem during `stakeToValidator()`.
+
+### getWhitelistedBy
+
+Get the validator who whitelisted a delegator.
+
+```solidity
+function getWhitelistedBy(address delegator) external view returns (address);
+```
+
+### getKeyInfo
+
+Get detailed information about a referral key.
+
+```solidity
+function getKeyInfo(bytes32 key) external view returns (
+    address validator,
+    bool isActive,
+    bool isMultiUse,
+    uint256 usageCount,
+    uint256 maxUsage,
+    uint256 createdAt,
+    uint256 expiresAt,
+    bool isExpired,
+    bool isUsable
+);
+```
+
+### getValidatorKeys
+
+Get all referral keys created by a validator.
+
+```solidity
+function getValidatorKeys(address validator) external view returns (bytes32[] memory);
+```
+
+### getValidatorStats
+
+Get validator's referral statistics.
+
+```solidity
+function getValidatorStats(address validator) external view returns (
+    uint256 totalKeys,
+    uint256 activeKeys,
+    uint256 whitelistCount
+);
+```
+
+## Helper Functions
+
+### hashReferralCode
+
+Generate key hash from a string.
+
+```solidity
+function hashReferralCode(string calldata code) external pure returns (bytes32);
+```
+
+**Example:**
+```typescript
+const keyHash = await nftPassport.hashReferralCode("MY-PROMO-CODE");
+```
+
+### generateKey
+
+Generate deterministic key from validator + nonce.
+
+```solidity
+function generateKey(address validator, uint256 nonce) external pure returns (bytes32);
+```
+
+## Admin Functions
+
+### setPaused
+
+Pause/unpause the contract (emergency).
+
+```solidity
+function setPaused(bool _paused) external;
+```
+
+### transferAdmin
+
+Transfer admin role.
+
+```solidity
+function transferAdmin(address newAdmin) external;
+```
+
+## Events
+
+```solidity
+event ReferralKeyCreated(
+    address indexed validator,
+    bytes32 indexed keyHash,
+    bool isMultiUse,
+    uint256 maxUsage,
+    uint256 expiresAt
+);
+
+event ReferralKeyUsed(
+    address indexed delegator,
+    address indexed validator,
+    bytes32 indexed keyHash
+);
+
+event ReferralKeyRevoked(
+    address indexed validator,
+    bytes32 indexed keyHash
+);
+
+event DirectInvite(
+    address indexed validator,
+    address indexed delegator
+);
+
+event WhitelistRevoked(
+    address indexed validator,
+    address indexed delegator
+);
+
+event DelegatorExited(
+    address indexed delegator,
+    address indexed validator
+);
+
+event AdminTransferred(
+    address indexed oldAdmin,
+    address indexed newAdmin
+);
+
+event Paused(bool isPaused);
+```
+
+## Usage Examples
+
+### Validator: Create Referral Campaign
+
+```typescript
+const nftPassport = new ethers.Contract(
+    "0x0000000000000000000000000000000000001001",
+    NFT_PASSPORT_ABI,
+    validatorSigner
+);
+
+// Create 10 one-time keys
+for (let i = 0; i < 10; i++) {
+    const key = ethers.keccak256(
+        ethers.toUtf8Bytes(`invite-${Date.now()}-${i}`)
+    );
+    await nftPassport.createReferralKey(key);
+    console.log(`Key ${i + 1}: ${key}`);
+}
+
+// Or create a promo code
+const promoKey = await nftPassport.hashReferralCode("VALIDATOR2024");
+await nftPassport.createMultiUseKey(promoKey, 1000, 0); // 1000 uses, never expires
+```
+
+### Delegator: Join a Validator
+
+```typescript
+const nftPassport = new ethers.Contract(
+    "0x0000000000000000000000000000000000001001",
+    NFT_PASSPORT_ABI,
+    delegatorSigner
+);
+
+// Check if already whitelisted
+const isWhitelisted = await nftPassport.isWhitelisted(
+    delegatorAddress,
+    validatorAddress
+);
+
+if (!isWhitelisted) {
+    // Use referral key
+    const referralKey = "0x..."; // From validator
+    await nftPassport.useReferralKey(referralKey);
+}
+
+// Now stake
+const resonanceSystem = new ethers.Contract(
+    "0x0000000000000000000000000000000000001000",
+    RESONANCE_SYSTEM_ABI,
+    delegatorSigner
+);
+
+await resonanceSystem.stakeToValidator(validatorAddress, {
+    value: ethers.parseEther("1000")
+});
+```
+
+### Check Key Status
+
+```typescript
+const keyInfo = await nftPassport.getKeyInfo(referralKey);
+
+console.log("Validator:", keyInfo.validator);
+console.log("Active:", keyInfo.isActive);
+console.log("Multi-use:", keyInfo.isMultiUse);
+console.log("Usage:", keyInfo.usageCount, "/", keyInfo.maxUsage);
+console.log("Usable:", keyInfo.isUsable);
+```
+
+## Integration with ResonanceSystem
+
+The NFTPassport is called internally by ResonanceSystem:
+
+```solidity
+// In ResonanceSystem.stakeToValidator()
+function stakeToValidator(address vaAddr) external payable {
+    // ...
+    require(
+        INFTPassport(NFT_PASSPORT).isWhitelisted(msg.sender, vaAddr),
+        "Not whitelisted"
+    );
+    // ...
+}
+```
+
+This ensures only whitelisted delegators can stake with a validator.
